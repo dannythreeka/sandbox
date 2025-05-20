@@ -46,10 +46,48 @@
         font-size: 1.2em;
         text-align: center;
       }
+
+      .camera-select {
+        margin: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .camera-select label {
+        margin-right: 10px;
+      }
+
+      select {
+        padding: 8px;
+        border-radius: 5px;
+        background-color: #444;
+        color: #fff;
+        border: 1px solid #666;
+      }
+
+      #refreshCameras {
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        margin-left: 8px;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
     </style>
   </head>
   <body>
     <h2>模具監視器</h2>
+
+    <div class="camera-select">
+      <label for="cameraSource">選擇攝像頭：</label>
+      <select id="cameraSource">
+        <option value="default">默認攝像頭</option>
+      </select>
+      <button id="refreshCameras" title="重新掃描攝像頭設備">⟳</button>
+    </div>
 
     <video id="video" autoplay playsinline></video>
     <canvas id="canvas" width="640" height="480"></canvas>
