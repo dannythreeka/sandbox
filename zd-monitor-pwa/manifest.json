@@ -1,0 +1,10 @@
+
+{
+  "name": "模具監視器",
+  "short_name": "模具監視器",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#111",
+  "theme_color": "#2e8b57",
+  "icons": []
+}

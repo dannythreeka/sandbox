@@ -1,0 +1,15 @@
+{
+  "name": "pdf-generator",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "@pdfme/generator": "^1.1.5"
+  },
+  "devDependencies": {
+    "prettier": "^2.8.4"
+  }
+}

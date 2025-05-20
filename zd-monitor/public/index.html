@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <title>模具監視器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        margin: 0;
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: #111;
+        color: #fff;
+      }
+
+      video,
+      canvas {
+        width: 90vw;
+        height: auto;
+        max-width: 640px;
+        border: 2px solid #444;
+        margin-top: 10px;
+      }
+
+      .controls {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 10px;
+      }
+
+      button {
+        padding: 10px 20px;
+        margin: 5px;
+        font-size: 1em;
+        background-color: #444;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+      }
+
+      #status {
+        margin: 10px;
+        font-size: 1.2em;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>模具監視器</h2>
+
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" width="640" height="480"></canvas>
+
+    <div class="controls">
+      <button id="captureClosed">拍攝關模具樣本</button>
+      <button id="captureOpenGood">拍攝開模具（合格）樣本</button>
+    </div>
+
+    <p id="status">尚未開始</p>
+
+    <!-- 載入 OpenCV.js -->
+    <script
+      async
+      src="https://docs.opencv.org/4.5.5/opencv.js"
+      onload="onOpenCvReady()"
+    ></script>
+    <script src="script.js"></script>
+  </body>
+</html>
