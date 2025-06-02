@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:with="currentPage='services'"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout.html}">
+<head lang="en">
+    <title>Complete - Facebook</title>
+</head>
+<body>
+<div class="container">
+    <div class="jumbotron alert-danger">
+        <h1>Complete</h1>
+        <th:block th:if="${userProfile != null}">
+            <table class="table">
+                <tr>
+                    <th>userProfile:
+                    </th>
+                    <td th:text="${userProfile}">-</td>
+                </tr>
+            </table>
+        </th:block>
+    </div>
+</div>
+</body>
+</html>

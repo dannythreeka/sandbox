@@ -1,0 +1,36 @@
+server:
+  port: 8080
+devtools:
+  restart:
+    enabled: true
+thymeleaf:
+  cache: true
+  check-template: false
+  
+http:
+  encoding:
+    charset: UTF-8
+    enabled: true
+    force: true
+
+line:
+  client_id: YOUR_LINE_CLIENT_ID
+  client_secret: YOUR_LINE_CLIENT_SECRET
+  authorization:
+    uri:
+      scheme: https
+      host: access.line.me
+      port: 443
+      path: /oauth2/v2.1/authorize
+    response-type: code
+    grant-type: authorization_code
+    redirect: http://localhost:8080/v1/callback
+    scope: openid%20profile
+  access-token:
+    uri:
+      scheme: https
+      host: api.line.me
+      port: 443
+      path: /oauth2/v2.1/token
+  id-token:
+    issuer: https://access.line.me

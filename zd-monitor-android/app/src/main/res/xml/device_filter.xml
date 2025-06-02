@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 通用USB摄像头设备（这个过滤器会匹配大多数USB摄像头） -->
+    <usb-device class="239" subclass="2" />  <!-- USB视频设备类 -->
+</resources>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:with="currentPage='services'"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout.html}">
+<head lang="en">
+    <title>Complete - Line</title>
+</head>
+<body>
+<div class="container">
+    <div class="jumbotron alert-danger">
+        <h1>Complete</h1>
+        <th:block th:if="${accessTokenResponse != null}">
+            <table class="table">
+                <tr>
+                    <th>accessTokenResponse:
+                    </th>
+                    <td th:text="${accessTokenResponse}">-</td>
+                </tr>
+            </table>
+        </th:block>
+        <th:block th:if="${idTokenJwt != null}">
+            <table class="table">
+                <tr>
+                    <th>idTokenJwt:
+                    </th>
+                    <td th:text="${idTokenJwt}">-</td>
+                </tr>
+            </table>
+        </th:block>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,84 @@
+buildscript {
+    ext['cucumber_version'] = '2.3.1'
+    ext['jersey_version'] = '2.25.1'
+    ext['selenide_version'] = '4.12.3'
+    ext['junit_version'] = '4.12'
+    ext['lombok_version'] = '1.16.8'
+}
+
+apply plugin: 'java'
+apply plugin: 'maven'
+
+group = 'com.example'
+version = '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+def buildTags = ''
+if (project.hasProperty("tags")) {
+    buildTags = tags + 'or @default'
+}
+
+def currencyRateUrl = "https://api.exchangeratesapi.io"
+if (project.hasProperty("currencyRateUrl")) {
+    currencyRateUrl = project.property("currencyRateUrl")
+}
+
+tasks.withType(JavaCompile) {
+	options.encoding = 'UTF-8'
+}
+
+repositories {
+     maven { url "http://repo.maven.apache.org/maven2" }
+}
+
+dependencies {
+    testCompile group: 'io.cucumber', name: 'cucumber-java', version: cucumber_version
+    testCompile group: 'io.cucumber', name: 'cucumber-junit', version: cucumber_version
+    testCompile group: 'org.glassfish.jersey.core', name: 'jersey-client', version: jersey_version
+    testCompile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-jackson', version: jersey_version
+    testCompile group: 'com.codeborne', name: 'selenide', version: selenide_version
+    testCompile group: 'junit', name: 'junit', version: junit_version
+    testCompile group: 'org.projectlombok', name: 'lombok', version: lombok_version
+    compile(group: "com.github.fge", name: "jackson-coreutils", version: "1.8")
+    compile(group: "com.github.fge", name: "json-schema-validator", version: "2.2.6")
+
+}
+
+task cucumberMain(dependsOn: testClasses) {
+    doLast {
+        javaexec {
+            main = "cucumber.api.cli.Main"
+            classpath = configurations.testRuntimeClasspath + sourceSets.main.output + sourceSets.test.output
+            args = ['--plugin', 'pretty', '--glue', 'com.example', 'src/test/resources']
+
+            println "Using tags $buildTags"
+            args '--tags', "$buildTags"
+        }
+    }
+}
+
+task testFeature1 {
+    dependsOn assemble, compileTestJava
+    doLast {
+        buildTags = buildTags + '@test and @feature1'
+        cucumberMain.execute()
+    }
+}
+
+task testFeature2 {
+    dependsOn assemble, compileTestJava
+    doLast {
+        buildTags = buildTags + '@test and @feature2'
+        cucumberMain.execute()
+    }
+}
+
+task testNotFeature {
+    dependsOn assemble, compileTestJava
+    doLast {
+        buildTags = buildTags + 'not @test'
+        cucumberMain.execute()
+    }
+}

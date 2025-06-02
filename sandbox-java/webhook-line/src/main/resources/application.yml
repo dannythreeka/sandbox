@@ -1,0 +1,5 @@
+line:
+  accessToken: YOU_ACCESS_TOKEN
+
+currency:
+  url: https://api.exchangeratesapi.io/latest

@@ -1,0 +1,36 @@
+server:
+  port: 8080
+devtools:
+  restart:
+    enabled: true
+thymeleaf:
+  cache: true
+  check-template: false
+
+http:
+  encoding:
+    charset: UTF-8
+    enabled: true
+    force: true
+
+google:
+  client_id: YOUR_GOOGLE_CLIENT_ID
+  client_secret: YOUR_GOOGLE_CLIENT_SECRET
+  authorization:
+    uri:
+      scheme: https
+      host: accounts.google.com
+      port: 443
+      path: /o/oauth2/v2/auth
+    response-type: code
+    grant-type: authorization_code
+    redirect: http://localhost:8080/v1/callback
+    scope: https://www.googleapis.com/auth/drive.metadata.readonly # Refer: https://developers.google.com/identity/protocols/googlescopes
+    access-type: offline
+  token:
+    uri:
+      scheme: https
+      host: www.googleapis.com
+      port: 443
+      path: /oauth2/v4/token
+    grant_type: authorization_code

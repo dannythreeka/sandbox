@@ -1,0 +1,11 @@
+management:
+  endpoints:
+    health:
+      enabled: true
+    beans:
+      enabled: false
+    metrics:
+      enabled: true
+#    web:
+#      exposure:
+#        include: *

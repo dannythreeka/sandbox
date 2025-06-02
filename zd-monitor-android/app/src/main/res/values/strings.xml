@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">模具監視器</string>
+    <string name="app_title">模具監視器</string>
+    <string name="capture_closed">拍攝關模具樣本</string>
+    <string name="capture_open_good">拍攝開模具（合格）樣本</string>
+    <string name="status_not_started">尚未開始</string>
+    <string name="status_ready">攝像頭已準備就緒</string>
+    <string name="status_searching">正在搜索攝像頭設備...</string>
+    <string name="status_camera_found">找到 %1$d 個攝像頭設備</string>
+    <string name="status_no_camera">未找到可用的攝像頭設備</string>
+    <string name="status_switch_camera">切換攝像頭後，請重新拍攝樣本</string>
+    <string name="status_sample_closed_saved">已儲存關模具樣本</string>
+    <string name="status_sample_open_good_saved">已儲存開模具（合格）樣本</string>
+    <string name="status_label">狀態：%1$s</string>
+    <string name="label_undefined">未定義</string>
+    <string name="label_closed">關模具</string>
+    <string name="label_open_good">開模具（合格）</string>
+    <string name="label_open_bad">開模具（不合格）</string>
+    <string name="default_camera">默認攝像頭</string>
+    <string name="usb_camera">USB 外接攝像頭</string>
+    <string name="camera_format">攝像頭 %1$d</string>
+</resources>

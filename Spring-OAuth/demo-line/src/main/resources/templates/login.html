@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:with="currentPage='services'"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout.html}">
+<head lang="en">
+    <title>Login - Line</title>
+</head>
+<body>
+<div class="container">
+    <h1>LOGIN</h1>
+    <form action="/v1/auth" method="post">
+        <button type="submit" class="btn btn-success">Start</button>
+    </form>
+</div>
+</body>
+</html>

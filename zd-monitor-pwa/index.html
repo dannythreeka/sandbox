@@ -89,22 +89,8 @@
       <button id="refreshCameras" title="重新掃描攝像頭設備">⟳</button>
     </div>
 
-    <!-- <video id="video" autoplay playsinline></video> -->
-    <video
-      id="usb-stream"
-      autoplay
-      muted
-      controls
-      style="width: 100%; height: auto"
-      playsinline
-    ></video>
+    <video id="video" autoplay playsinline></video>
 
-    <script>
-      const video = document.getElementById('usb-stream');
-      // 你也可以改成用變數動態指定
-      const streamUrl = 'http://192.168.1.100:8081/video'; // 改成實際 IP
-      video.src = streamUrl;
-    </script>
     <canvas id="canvas" width="640" height="480"></canvas>
 
     <div class="controls">

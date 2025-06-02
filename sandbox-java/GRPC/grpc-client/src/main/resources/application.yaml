@@ -1,0 +1,6 @@
+rest-server:
+  endpoint: http://localhost:8888
+  port: /rest
+grpc:
+  address: localhost
+  port: 6565

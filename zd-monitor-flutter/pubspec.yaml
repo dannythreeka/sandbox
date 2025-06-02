@@ -1,0 +1,61 @@
+name: zd_monitor_flutter
+description: 模具監視器 Flutter 应用，支持USB摄像头
+
+# 定义版本号
+version: 1.0.0+1
+
+# 最低需求的Dart SDK版本
+environment:
+  sdk: '>=2.16.0 <3.0.0'
+
+# 依赖项
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # 摄像头支持
+  camera: ^0.10.0
+  camera_web: ^0.3.0
+  camera_windows: ^0.2.0
+
+  # USB 摄像头支持 (仅限于Android和Windows)
+  usb_serial: ^0.4.0
+  usb_camera: ^0.0.6 # 注意这个包目前可能是实验性质的
+
+  # 图像处理
+  image: ^3.0.0
+  opencv: ^4.5.5 # 这是一个假设性的包名，实际使用需要查找适合Flutter的OpenCV包
+
+  # UI 组件
+  cupertino_icons: ^1.0.2
+  dropdown_button2: ^1.4.0
+
+  # 权限处理
+  permission_handler: ^10.0.0
+
+  # 路径和存储
+  path_provider: ^2.0.11
+  path: ^1.8.1
+
+  # 状态管理
+  provider: ^6.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+# Flutter 配置
+flutter:
+  # 材料设计
+  uses-material-design: true
+
+  # 资源
+  assets:
+    - assets/
+
+  # 字体
+  fonts:
+    - family: NotoSansCJK
+      fonts:
+        - asset: assets/fonts/NotoSansCJK-Regular.ttc
