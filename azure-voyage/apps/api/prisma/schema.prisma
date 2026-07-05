@@ -1,0 +1,42 @@
+// M0 子集：帳號 + 世界殼。M1 依 docs/03-data-model.md 擴充完整 schema。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  passwordHash String
+  displayName  String
+  createdAt    DateTime    @default(now())
+  worlds       GameWorld[]
+}
+
+enum WorldStatus {
+  ACTIVE
+  VICTORY
+  DEFEAT
+  ABANDONED
+}
+
+model GameWorld {
+  id             String      @id @default(cuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  difficulty     String // "EASY" | "NORMAL" | "HARD"（zod 驗證於 API 邊界）
+  contentVersion String
+  seed           Int
+  currentTick    Int         @default(0)
+  status         WorldStatus @default(ACTIVE)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([userId, status])
+}

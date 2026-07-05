@@ -22,6 +22,20 @@
 | 8 | [08-project-structure.md](docs/08-project-structure.md) | Monorepo 目錄結構、共用套件、開發工具鏈 | 所有人 |
 | 9 | [09-roadmap.md](docs/09-roadmap.md) | 實作路線圖：M0–M6 里程碑，每步的驗收標準 | 實作 AI / 開發者 |
 
+## 快速開始（M0）
+
+```bash
+# 需求：Node 22+、pnpm 10、PostgreSQL 16（本機或 docker compose up -d postgres）
+cp .env.example .env          # 依需要調整 DATABASE_URL
+pnpm install
+pnpm db:migrate               # 建立資料表（prisma migrate dev）
+pnpm dev                      # 同時啟動 api (:3001) 與 web (:3000)
+```
+
+打開 http://localhost:3000 → 註冊帳號 → 建立世界 → 進入遊戲頁（M0 顯示世界資訊與 WS 連線狀態；海圖在 M2 登場）。
+
+驗證指令：`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`。
+
 ## 技術棧一覽
 
 - **Monorepo**: pnpm workspaces + Turborepo
