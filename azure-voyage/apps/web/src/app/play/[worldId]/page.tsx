@@ -100,17 +100,68 @@ export default function PlayPage() {
 
       {error && <p className="text-sm text-red-400">{error}</p>}
 
-      {world ? (
-        <section className="panel space-y-2">
-          <h1 className="text-2xl font-bold text-foam">{world.name}</h1>
-          <p className="text-slate-300">
-            航行第 <span className="font-mono text-gold">{tick ?? world.currentTick}</span> 日 ·
-            難度 {world.difficulty} · 世界種子 <span className="font-mono">{world.seed}</span>
-          </p>
-          <p className="text-sm text-slate-500">
-            內容版本 {world.contentVersion} —— 海圖與艦隊將在 M2 里程碑登場。
-          </p>
-        </section>
+      {world && snapshot ? (
+        <>
+          <section className="panel space-y-2">
+            <h1 className="text-2xl font-bold text-foam">{world.name}</h1>
+            <p className="text-slate-300">
+              航行第 <span className="font-mono text-gold">{tick ?? world.currentTick}</span> 日
+              · 難度 {world.difficulty} · 世界種子 <span className="font-mono">{world.seed}</span>
+            </p>
+            <p className="text-slate-300">
+              {snapshot.playerGuild.name} · 資金{" "}
+              <span className="font-mono text-gold">
+                {snapshot.playerGuild.gold.toLocaleString("zh-TW")}
+              </span>{" "}
+              金 · 聲望 {snapshot.playerGuild.fame}
+            </p>
+            <p className="text-sm text-slate-500">
+              內容版本 {world.contentVersion} · 已知港口 {snapshot.knownPorts.length} · 對手商會{" "}
+              {snapshot.npcGuilds.map((g) => g.name).join("、")}
+            </p>
+          </section>
+
+          {snapshot.fleets.map((fleet) => {
+            const home = snapshot.knownPorts.find((p) => p.portId === fleet.dockedPortId);
+            return (
+              <section key={fleet.id} className="panel space-y-3">
+                <h2 className="text-xl font-semibold text-foam">
+                  {fleet.name}
+                  <span className="ml-2 text-sm font-normal text-slate-400">
+                    {fleet.activity === "DOCKED" && home
+                      ? `停靠於 ${home.name}`
+                      : fleet.activity}
+                    · 糧 {fleet.food} · 水 {fleet.water} · 士氣 {fleet.morale}
+                  </span>
+                </h2>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {fleet.ships.map((ship) => (
+                    <div key={ship.id} className="rounded-md border border-foam/20 p-3">
+                      <p className="font-medium">
+                        {ship.isFlagship ? "⚓ " : ""}
+                        {ship.name}
+                      </p>
+                      <p className="text-sm text-slate-400">
+                        耐久 {ship.hull} · 帆 {ship.sails}% · 船員 {ship.crew}
+                      </p>
+                    </div>
+                  ))}
+                  {fleet.officers.map((officer) => (
+                    <div key={officer.id} className="rounded-md border border-foam/20 p-3">
+                      <p className="font-medium">{officer.name}</p>
+                      <p className="text-sm text-slate-400">
+                        統率 {officer.stats.lead} · 航海 {officer.stats.nav} · 戰鬥{" "}
+                        {officer.stats.combat} · 商才 {officer.stats.trade} · 學識{" "}
+                        {officer.stats.lore}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500">海圖航行將在 M2 里程碑開放。</p>
+              </section>
+            );
+          })}
+        </>
       ) : (
         !error && <p className="text-slate-400">載入世界中…</p>
       )}

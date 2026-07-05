@@ -37,7 +37,7 @@ describe("world schemas", () => {
     ).toBe(false);
   });
 
-  it("validates the M0 snapshot shape", () => {
+  it("validates the full snapshot shape", () => {
     const snapshot = {
       world: {
         id: "w1",
@@ -45,11 +45,60 @@ describe("world schemas", () => {
         difficulty: "EASY",
         status: "ACTIVE",
         currentTick: 0,
-        contentVersion: "0.0.0-m0",
+        contentVersion: "1.0.0",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         seed: 12345,
       },
+      playerGuild: { id: "g1", name: "提督商會", gold: 10000, fame: 0 },
+      fleets: [
+        {
+          id: "f1",
+          name: "第一艦隊",
+          activity: "DOCKED",
+          pos: { q: 30, r: 30 },
+          dockedPortId: "port.amber_gulf.aurelia",
+          food: 30,
+          water: 30,
+          morale: 70,
+          ships: [
+            {
+              id: "s1",
+              shipClassId: "ship.lugger",
+              name: "海燕號",
+              hull: 55,
+              sails: 100,
+              crew: 8,
+              isFlagship: true,
+              cargo: [],
+            },
+          ],
+          officers: [
+            {
+              id: "o1",
+              name: "賽菈・凡德",
+              portrait: "portrait.sera",
+              role: null,
+              stats: { lead: 45, nav: 70, combat: 30, trade: 40, lore: 60 },
+              skills: ["skill.cartography"],
+              loyalty: 60,
+              salary: 120,
+            },
+          ],
+        },
+      ],
+      knownPorts: [
+        {
+          portId: "port.amber_gulf.aurelia",
+          name: "奧雷利亞",
+          regionId: "region.amber_gulf",
+          coord: { col: 44, row: 30 },
+          size: 3,
+          visited: true,
+        },
+      ],
+      npcGuilds: [{ id: "g2", name: "霜港同盟", color: "#7fb8d4", fame: 0 }],
+      victoryProgress: { regionsDominated: 0, relicsFound: 0, totalAssets: 10000 },
     };
     expect(WorldSnapshotSchema.safeParse(snapshot).success).toBe(true);
   });

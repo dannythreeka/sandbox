@@ -13,7 +13,8 @@
     "test": "turbo run test",
     "test:rules": "pnpm --filter @azure-voyage/shared test",
     "db:migrate": "pnpm --filter @azure-voyage/api db:migrate",
-    "db:generate": "pnpm --filter @azure-voyage/api db:generate"
+    "db:generate": "pnpm --filter @azure-voyage/api db:generate",
+    "mapgen": "pnpm --filter @azure-voyage/shared mapgen"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
