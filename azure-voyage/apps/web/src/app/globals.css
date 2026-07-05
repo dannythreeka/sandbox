@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-abyss text-slate-100 antialiased;
+}
+
+.panel {
+  @apply rounded-lg border border-wave bg-wave/60 p-6 shadow-lg;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center rounded-md bg-gold px-4 py-2 font-medium text-abyss transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.btn-ghost {
+  @apply inline-flex items-center justify-center rounded-md border border-foam/40 px-4 py-2 text-foam transition hover:bg-foam/10;
+}
+
+.input {
+  @apply w-full rounded-md border border-foam/30 bg-abyss px-3 py-2 text-slate-100 outline-none focus:border-gold;
+}
+
+.label {
+  @apply mb-1 block text-sm text-foam;
+}

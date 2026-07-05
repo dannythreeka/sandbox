@@ -1,0 +1,43 @@
+name: azure-voyage CI
+
+on:
+  push:
+    branches: [main]
+    paths: ["azure-voyage/**"]
+  pull_request:
+    paths: ["azure-voyage/**"]
+
+defaults:
+  run:
+    working-directory: azure-voyage
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: azure-voyage/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build (shared → api/web)
+        run: pnpm build
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
