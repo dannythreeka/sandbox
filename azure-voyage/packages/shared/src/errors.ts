@@ -32,6 +32,9 @@ export const ERROR_CODES = [
   // 航海士與造船廠（M4）
   "OFFICER_UNAVAILABLE",
   "CANNOT_SELL_LAST_SHIP",
+  // 海戰（M5）
+  "BATTLE_ACTION_INVALID",
+  "BATTLE_NOT_ACTIVE",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -76,4 +79,6 @@ export const ERROR_MESSAGES_ZH_TW: Record<ErrorCode, string> = {
   COMMODITY_UNAVAILABLE: "此港口不販售此商品",
   OFFICER_UNAVAILABLE: "此航海士目前無法招募",
   CANNOT_SELL_LAST_SHIP: "無法賣出艦隊僅存的最後一艘船",
+  BATTLE_ACTION_INVALID: "無效的戰鬥行動",
+  BATTLE_NOT_ACTIVE: "戰鬥已結束",
 };

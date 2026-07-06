@@ -18,6 +18,7 @@ export * from "./rules/movement";
 export * from "./rules/supplies";
 export * from "./rules/pricing";
 export * from "./rules/influence";
+export * from "./rules/battle";
 export * from "./rules/worldgen";
 
 // schemas & errors
@@ -27,4 +28,5 @@ export * from "./schemas/world";
 export * from "./schemas/voyage";
 export * from "./schemas/market";
 export * from "./schemas/officer";
+export * from "./schemas/battle";
 export * from "./schemas/ws";

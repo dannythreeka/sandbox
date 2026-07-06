@@ -7,12 +7,16 @@ export const WS_EVENTS = {
   CLIENT_JOIN: "client:join",
   CLIENT_RESYNC: "client:resync",
   CLIENT_ADVANCE: "client:advance",
+  BATTLE_ACTION: "battle:action",
   // server → client
   SERVER_JOINED: "server:joined",
   SERVER_RESYNC: "server:resync",
   SERVER_ERROR: "server:error",
   SERVER_TICK: "server:tick",
   SERVER_ARRIVAL: "server:arrival",
+  SERVER_BATTLE_START: "server:battle-start",
+  BATTLE_UPDATE: "battle:update",
+  BATTLE_END: "battle:end",
 } as const;
 
 export const ClientJoinSchema = z.object({

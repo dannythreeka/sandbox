@@ -76,3 +76,28 @@ export function regionById(id: string): RegionDef {
   if (!region) throw new Error(`unknown region: ${id}`);
   return region;
 }
+
+/** 依 offset 座標找出所屬海域（docs/05 §3 遭遇判定用）；落在邊界外時回傳最近海域。 */
+export function regionForCoord(coord: { col: number; row: number }): RegionDef {
+  const hit = REGIONS.find(
+    (r) =>
+      coord.col >= r.bounds.colMin &&
+      coord.col <= r.bounds.colMax &&
+      coord.row >= r.bounds.rowMin &&
+      coord.row <= r.bounds.rowMax,
+  );
+  if (hit) return hit;
+
+  let best = REGIONS[0];
+  let bestDist = Infinity;
+  for (const region of REGIONS) {
+    const cx = (region.bounds.colMin + region.bounds.colMax) / 2;
+    const cy = (region.bounds.rowMin + region.bounds.rowMax) / 2;
+    const dist = (coord.col - cx) ** 2 + (coord.row - cy) ** 2;
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = region;
+    }
+  }
+  return best;
+}

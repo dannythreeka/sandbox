@@ -15,16 +15,29 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
-/** 將主 seed 與若干串流編號混合出子 seed（例：tick 編號、戰鬥回合）。 */
+/**
+ * 將主 seed 與若干串流編號混合出子 seed（例：tick 編號、戰鬥回合）。
+ * 注意：折入的每個 stream 值先經過 imul 轉換再 XOR 進累積值，而不是直接
+ * `h ^ s`——否則當呼叫端剛好傳入 seed === 某個 stream 值時，h ^ s 會整個
+ * 歸零、後續混合結果會與該值本身無關而變成常數（曾在 EncounterService 的
+ * 遭遇機率測試中實際觸發過這個退化案例）。
+ *
+ * 回傳值遮罩到 31-bit（& 0x7fffffff）：deriveSeed 的結果經常直接存進 DB 的
+ * 有號 32-bit Int 欄位（例如 Battle.seed），若回傳完整無號 32-bit（可達
+ * 4294967295）有一半機率會超出有號 INT4 範圍而讓寫入直接炸掉（曾在戰鬥
+ * seed 寫入 Postgres 時實際觸發過）。少 1 bit 熵對遊戲用途的隨機性毫無影響。
+ */
 export function deriveSeed(seed: number, ...streams: number[]): number {
   let h = seed >>> 0;
   for (const s of streams) {
-    h = Math.imul(h ^ (s >>> 0), 0x9e3779b1) >>> 0;
-    h = ((h << 13) | (h >>> 19)) >>> 0;
-    h = Math.imul(h, 5) + 0xe6546b64;
-    h >>>= 0;
+    const k = Math.imul(s >>> 0, 0x9e3779b1) >>> 0;
+    h = (h ^ k) >>> 0;
+    h = Math.imul(h, 0x85ebca6b) >>> 0;
+    h ^= h >>> 13;
+    h = Math.imul(h, 0xc2b2ae35) >>> 0;
+    h ^= h >>> 16;
   }
-  return h >>> 0;
+  return (h >>> 0) & 0x7fffffff;
 }
 
 /** 便利包裝：帶常用抽樣方法的隨機來源。 */
