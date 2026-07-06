@@ -47,6 +47,18 @@ export const BALANCE = {
   FOOD_PER_CREW_PER_TICK: 1,
   WATER_PER_CREW_PER_TICK: 1,
 
+  // ── 航海士（M4 起使用，docs/01 §4.5）──
+  /** 每 30 tick 結算一次薪資 */
+  SALARY_INTERVAL_TICKS: 30,
+  /** 欠薪時忠誠度扣減 */
+  LOYALTY_PENALTY_UNPAID: 10,
+
+  // ── 造船廠（M4 起使用）──
+  /** 修理費：每點缺損耐久的金額 */
+  REPAIR_COST_PER_HULL: 15,
+  /** 賣船退款比例（原價的比例） */
+  SHIP_SELL_REFUND_RATIO: 0.5,
+
   // ── 存檔 ──
   MAX_ACTIVE_WORLDS_PER_USER: 5,
 } as const;

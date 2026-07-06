@@ -20,6 +20,7 @@ import { getAccessToken } from "@/lib/auth";
 import { createGameSocket } from "@/lib/socket";
 import { SeaMap } from "@/game/SeaMap";
 import { TradePanel } from "@/game/TradePanel";
+import { TavernShipyardPanel } from "@/game/TavernShipyardPanel";
 
 type WsState = "connecting" | "joined" | "disconnected";
 
@@ -240,6 +241,19 @@ export default function PlayPage() {
                 fleetId={fleet.id}
                 shipId={fleet.ships[0].id}
                 onTraded={() => {
+                  api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
+                }}
+              />
+            </section>
+          )}
+
+          {activity === "DOCKED" && currentPort && (
+            <section className="panel">
+              <TavernShipyardPanel
+                worldId={worldId}
+                portId={currentPort.portId}
+                fleet={fleet}
+                onChanged={() => {
                   api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
                 }}
               />

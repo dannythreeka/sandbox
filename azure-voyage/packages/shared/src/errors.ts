@@ -29,6 +29,9 @@ export const ERROR_CODES = [
   // 貿易（M3）
   "STOCK_INSUFFICIENT",
   "COMMODITY_UNAVAILABLE",
+  // 航海士與造船廠（M4）
+  "OFFICER_UNAVAILABLE",
+  "CANNOT_SELL_LAST_SHIP",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -71,4 +74,6 @@ export const ERROR_MESSAGES_ZH_TW: Record<ErrorCode, string> = {
   FLEET_BUSY: "艦隊目前無法執行此操作",
   STOCK_INSUFFICIENT: "數量不足（市場庫存或貨艙存貨不夠）",
   COMMODITY_UNAVAILABLE: "此港口不販售此商品",
+  OFFICER_UNAVAILABLE: "此航海士目前無法招募",
+  CANNOT_SELL_LAST_SHIP: "無法賣出艦隊僅存的最後一艘船",
 };

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { COMMODITY_IDS, commodityById } from "../content/commodities";
 import { NPC_GUILD_TEMPLATES } from "../content/npcGuilds";
+import { OFFICER_TEMPLATES } from "../content/officersPool";
 import { PORTS } from "../content/ports";
 import { REGION_IDS } from "../content/regions";
 import { SHIP_CLASSES } from "../content/shipClasses";
@@ -96,5 +97,20 @@ describe("buildNewWorldPlan", () => {
         expect(v).toBeLessThanOrEqual(100);
       }
     }
+  });
+
+  it("distributes every remaining officer template to a tavern respecting minPortSize", () => {
+    const plan = buildNewWorldPlan(11, "NORMAL");
+    expect(plan.tavernOfficers).toHaveLength(10); // 12 templates - 2 starting
+    const portByIdMap = new Map(PORTS.map((p) => [p.id, p]));
+    for (const officer of plan.tavernOfficers) {
+      const port = portByIdMap.get(officer.locationPortId);
+      expect(port, officer.locationPortId).toBeDefined();
+      const template = OFFICER_TEMPLATES.find((t) => t.key === officer.templateKey)!;
+      expect(port!.size).toBeGreaterThanOrEqual(template.minPortSize);
+    }
+    // 起始兩位不應重複出現在酒館池
+    const startingKeys = new Set(["off.sera_vandel", "off.bram_holt"]);
+    expect(plan.tavernOfficers.some((o) => startingKeys.has(o.templateKey))).toBe(false);
   });
 });
