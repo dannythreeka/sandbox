@@ -14,6 +14,7 @@ export const WS_EVENTS = {
   SERVER_ERROR: "server:error",
   SERVER_TICK: "server:tick",
   SERVER_ARRIVAL: "server:arrival",
+  SERVER_EVENT: "server:event",
   SERVER_BATTLE_START: "server:battle-start",
   BATTLE_UPDATE: "battle:update",
   BATTLE_END: "battle:end",

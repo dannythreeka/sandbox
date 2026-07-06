@@ -6,9 +6,12 @@ import {
   type AuthResult,
   type AuthTokens,
   type CreateWorldInput,
+  type DiscoveryRecordView,
   type ErrorCode,
+  type ExploreResult,
   type LoginInput,
   type PortDetail,
+  type RegisterDiscoveryResult,
   type RegisterInput,
   type RouteView,
   type TradeInput,
@@ -114,4 +117,17 @@ export const api = {
       method: "POST",
       body: input,
     }),
+  anchor: (worldId: string, fleetId: string) =>
+    request<{ activity: string }>(`/worlds/${worldId}/fleets/${fleetId}/anchor`, {
+      method: "POST",
+    }),
+  explore: (worldId: string, fleetId: string) =>
+    request<ExploreResult>(`/worlds/${worldId}/fleets/${fleetId}/explore`, { method: "POST" }),
+  listDiscoveries: (worldId: string) =>
+    request<DiscoveryRecordView[]>(`/worlds/${worldId}/discoveries`),
+  registerDiscovery: (worldId: string, portId: string, discoveryRecordId: string) =>
+    request<RegisterDiscoveryResult>(
+      `/worlds/${worldId}/ports/${portId}/guild-hall/register-discovery`,
+      { method: "POST", body: { discoveryRecordId } },
+    ),
 };

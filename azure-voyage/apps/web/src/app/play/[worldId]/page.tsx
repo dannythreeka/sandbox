@@ -14,6 +14,7 @@ import {
   type ServerBattleEndPayload,
   type ServerBattleStartPayload,
   type ServerBattleUpdatePayload,
+  type ServerEventPayload,
   type ServerJoinedPayload,
   type ServerResyncPayload,
   type ServerTickPayload,
@@ -26,6 +27,8 @@ import { SeaMap } from "@/game/SeaMap";
 import { TradePanel } from "@/game/TradePanel";
 import { TavernShipyardPanel } from "@/game/TavernShipyardPanel";
 import { BattleScene } from "@/game/BattleScene";
+import { ExplorationPanel } from "@/game/ExplorationPanel";
+import { DiscoveryPanel } from "@/game/DiscoveryPanel";
 
 type WsState = "connecting" | "joined" | "disconnected";
 
@@ -94,6 +97,10 @@ export default function PlayPage() {
     });
     socket.on(WS_EVENTS.SERVER_ARRIVAL, (payload: ServerArrivalPayload) => {
       setNotice(`艦隊已抵達 ${payload.portId}`);
+      api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
+    });
+    socket.on(WS_EVENTS.SERVER_EVENT, (payload: ServerEventPayload) => {
+      setNotice(payload.event.narrative);
       api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
     });
     socket.on(WS_EVENTS.SERVER_BATTLE_START, (payload: ServerBattleStartPayload) => {
@@ -260,6 +267,14 @@ export default function PlayPage() {
                 )}
               </div>
             )}
+            <ExplorationPanel
+              worldId={worldId}
+              fleetId={fleet.id}
+              activity={activity ?? ""}
+              onChanged={() => {
+                api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
+              }}
+            />
           </section>
 
           {activity === "DOCKED" && currentPort && fleet.ships[0] && (
@@ -282,6 +297,18 @@ export default function PlayPage() {
                 worldId={worldId}
                 portId={currentPort.portId}
                 fleet={fleet}
+                onChanged={() => {
+                  api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
+                }}
+              />
+            </section>
+          )}
+
+          {activity === "DOCKED" && currentPort && (
+            <section className="panel">
+              <DiscoveryPanel
+                worldId={worldId}
+                portId={currentPort.portId}
                 onChanged={() => {
                   api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
                 }}

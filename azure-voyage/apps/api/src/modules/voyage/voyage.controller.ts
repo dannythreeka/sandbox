@@ -29,4 +29,13 @@ export class VoyageController {
   ) {
     return this.voyageService.depart(user.userId, worldId, fleetId);
   }
+
+  @Post("anchor")
+  anchor(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("worldId") worldId: string,
+    @Param("fleetId") fleetId: string,
+  ) {
+    return this.voyageService.toggleAnchor(user.userId, worldId, fleetId);
+  }
 }

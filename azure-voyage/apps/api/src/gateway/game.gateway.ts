@@ -136,6 +136,11 @@ export class GameGateway implements OnGatewayConnection {
     this.server.to(worldRoom(worldId)).emit(WS_EVENTS.SERVER_BATTLE_START, payload);
   }
 
+  @OnEvent("world.event")
+  onWorldEvent({ worldId, payload }: { worldId: string; payload: unknown }): void {
+    this.server.to(worldRoom(worldId)).emit(WS_EVENTS.SERVER_EVENT, payload);
+  }
+
   @OnEvent("battle.update")
   onBattleUpdate({ worldId, payload }: { worldId: string; payload: unknown }): void {
     this.server.to(worldRoom(worldId)).emit(WS_EVENTS.BATTLE_UPDATE, payload);

@@ -9,6 +9,8 @@ import { ClockModule } from "./modules/clock/clock.module";
 import { GatewayModule } from "./gateway/gateway.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { BattleModule } from "./modules/battle/battle.module";
+import { DiscoveryModule } from "./modules/discovery/discovery.module";
+import { EventModule } from "./modules/event/event.module";
 import { MarketModule } from "./modules/market/market.module";
 import { OfficerModule } from "./modules/officer/officer.module";
 import { ShipyardModule } from "./modules/shipyard/shipyard.module";
@@ -45,6 +47,8 @@ import { RedisModule } from "./redis/redis.module";
     OfficerModule,
     ShipyardModule,
     BattleModule,
+    DiscoveryModule,
+    EventModule,
     ClockModule,
     GatewayModule,
   ],
