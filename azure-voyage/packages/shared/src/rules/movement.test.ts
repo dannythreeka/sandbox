@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { HexMap } from "./hexmap";
-import { fleetSpeed, isContiguousRoute, stepAlongRoute, type Route } from "./movement";
+import {
+  fleetSpeed,
+  isContiguousRoute,
+  navigatorSpeedBonus,
+  stepAlongRoute,
+  type Route,
+} from "./movement";
 
 function makeMap(rows: string[]): HexMap {
   return { width: rows[0].length, height: rows.length, rows };
@@ -11,6 +17,21 @@ describe("fleetSpeed", () => {
     expect(fleetSpeed(36)).toBe(3);
     expect(fleetSpeed(5)).toBe(1);
     expect(fleetSpeed(0)).toBe(1);
+  });
+
+  it("applies a navigator bonus percentage", () => {
+    expect(fleetSpeed(36, 0.2)).toBe(Math.floor((36 * 1.2) / 10));
+    expect(fleetSpeed(36, 0.2)).toBeGreaterThan(fleetSpeed(36, 0));
+  });
+});
+
+describe("navigatorSpeedBonus", () => {
+  it("scales with nav stat, capped at 20%", () => {
+    expect(navigatorSpeedBonus(undefined)).toBe(0);
+    expect(navigatorSpeedBonus(0)).toBe(0);
+    expect(navigatorSpeedBonus(50)).toBeCloseTo(0.1);
+    expect(navigatorSpeedBonus(100)).toBe(0.2);
+    expect(navigatorSpeedBonus(100000)).toBe(0.2);
   });
 });
 

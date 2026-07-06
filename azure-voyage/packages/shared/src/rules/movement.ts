@@ -12,9 +12,18 @@ export interface Route {
   targetPortId?: string;
 }
 
-/** 每 tick 基礎移動格數（船速 / 10，向下取整，至少 1）。 */
-export function fleetSpeed(slowestShipSpeed: number): number {
-  return Math.max(1, Math.floor(slowestShipSpeed / 10));
+/**
+ * 每 tick 基礎移動格數（船速 / 10，向下取整，至少 1）。
+ * navBonusPct：航海長（NAVIGATOR）職位的 nav 屬性加成（docs/01 §4.5），M4 引入，預設 0。
+ */
+export function fleetSpeed(slowestShipSpeed: number, navBonusPct = 0): number {
+  return Math.max(1, Math.floor((slowestShipSpeed * (1 + navBonusPct)) / 10));
+}
+
+/** 航海長加成：nav 屬性每點 +0.2%，上限 +20%（docs/01 §4.5，M4 平衡常數）。 */
+export function navigatorSpeedBonus(navStat: number | undefined): number {
+  if (navStat === undefined) return 0;
+  return Math.min(0.2, navStat * 0.002);
 }
 
 export interface StepResult {

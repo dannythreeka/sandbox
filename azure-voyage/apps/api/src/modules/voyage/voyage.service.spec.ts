@@ -40,7 +40,7 @@ function makePrismaMock(state: { fleet: Fleet; world?: { currentTick: number; st
     fleet: {
       findUnique: jest.fn(async () => ({ ...state.fleet, guild: { kind: "PLAYER" } })),
       findMany: jest.fn(async () =>
-        state.fleet.activity === "SAILING" ? [{ ...state.fleet, ships }] : [],
+        state.fleet.activity === "SAILING" ? [{ ...state.fleet, ships, officers: [] }] : [],
       ),
       update: jest.fn(async ({ data }: { data: Partial<Fleet> }) => {
         // 真實 Prisma 只會更新 data 內出現的欄位；純 JS mock 需自行還原這個語意，

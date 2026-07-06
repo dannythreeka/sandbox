@@ -26,4 +26,5 @@ export * from "./schemas/auth";
 export * from "./schemas/world";
 export * from "./schemas/voyage";
 export * from "./schemas/market";
+export * from "./schemas/officer";
 export * from "./schemas/ws";

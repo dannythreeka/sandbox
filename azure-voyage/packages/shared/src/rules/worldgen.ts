@@ -42,6 +42,10 @@ export interface OfficerInitPlan {
   salary: number;
 }
 
+export interface TavernOfficerInitPlan extends OfficerInitPlan {
+  locationPortId: string;
+}
+
 export interface NpcGuildInitPlan {
   key: string;
   name: string;
@@ -68,6 +72,7 @@ export interface WorldPlan {
   startingWater: number;
   startingMorale: number;
   officers: OfficerInitPlan[];
+  tavernOfficers: TavernOfficerInitPlan[];
   npcGuilds: NpcGuildInitPlan[];
   ports: PortInitPlan[];
 }
@@ -107,6 +112,29 @@ function buildMarket(rng: Rng, portId: string): MarketInitPlan[] {
   return entries;
 }
 
+/**
+ * 待業航海士分派到酒館（docs/01 §4.5）。M4 簡化：一次性在建檔時把「除了起始兩位」的
+ * 其餘模板分派到符合規模門檻的港口（確定性，依世界 seed 擲骰），不做動態刷新。
+ */
+function buildTavernOfficers(rng: Rng): TavernOfficerInitPlan[] {
+  const startingSet = new Set<string>(STARTING_OFFICER_KEYS);
+  const pool = OFFICER_TEMPLATES.filter((t) => !startingSet.has(t.key));
+
+  return pool.map((template) => {
+    const eligiblePorts = PORTS.filter((p) => p.size >= template.minPortSize);
+    const port = rng.pick(eligiblePorts);
+    return {
+      templateKey: template.key,
+      name: template.name,
+      portrait: template.portrait,
+      stats: rollStats(rng, template.statRanges),
+      skills: [...template.skills],
+      salary: template.salary,
+      locationPortId: port.id,
+    };
+  });
+}
+
 function buildInfluences(rng: Rng, portId: string): InfluenceInitPlan[] {
   const port = portById(portId);
   const entries: InfluenceInitPlan[] = [];
@@ -137,6 +165,8 @@ export function buildNewWorldPlan(seed: number, difficulty: Difficulty): WorldPl
       salary: template.salary,
     };
   });
+
+  const tavernOfficers = buildTavernOfficers(rng);
 
   const npcGuilds: NpcGuildInitPlan[] = NPC_GUILD_TEMPLATES.map((t) => ({
     key: t.key,
@@ -170,6 +200,7 @@ export function buildNewWorldPlan(seed: number, difficulty: Difficulty): WorldPl
     startingWater: BALANCE.STARTING_WATER,
     startingMorale: BALANCE.STARTING_MORALE,
     officers,
+    tavernOfficers,
     npcGuilds,
     ports,
   };

@@ -7,6 +7,7 @@ import {
   findPath,
   fleetSpeed,
   HEXMAP,
+  navigatorSpeedBonus,
   oddrToAxial,
   portById,
   RouteViewSchema,
@@ -102,7 +103,7 @@ export class VoyageService {
     const world = await this.prisma.gameWorld.findUniqueOrThrow({ where: { id: worldId } });
     const sailingFleets = await this.prisma.fleet.findMany({
       where: { worldId, activity: "SAILING" },
-      include: { ships: true },
+      include: { ships: true, officers: true },
     });
 
     const deltas: FleetTickDelta[] = [];
@@ -115,8 +116,11 @@ export class VoyageService {
 
       const slowest = Math.min(...fleet.ships.map((s) => shipClassById(s.shipClassId).speed));
       const totalCrew = fleet.ships.reduce((acc, s) => acc + s.crew, 0);
+      const navigator = fleet.officers.find((o) => o.role === "NAVIGATOR");
+      const navStats = navigator?.stats as { nav: number } | undefined;
+      const navBonus = navigatorSpeedBonus(navStats?.nav);
 
-      const step = stepAlongRoute(HEXMAP, route, fleetSpeed(slowest));
+      const step = stepAlongRoute(HEXMAP, route, fleetSpeed(slowest, navBonus));
       const supplies = consumeSupplies(
         { food: fleet.food, water: fleet.water, morale: fleet.morale },
         totalCrew,

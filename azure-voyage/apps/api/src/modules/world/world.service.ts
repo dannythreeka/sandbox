@@ -184,6 +184,21 @@ export class WorldService {
         },
       });
     }
+    // 6. 待業航海士分派到各港酒館（M4）
+    for (const officer of plan.tavernOfficers) {
+      await tx.officer.create({
+        data: {
+          worldId: world.id,
+          fleetId: null,
+          name: officer.name,
+          portrait: officer.portrait,
+          stats: { ...officer.stats },
+          skills: officer.skills,
+          salary: officer.salary,
+          locationPortId: officer.locationPortId,
+        },
+      });
+    }
     return world;
   }
 
