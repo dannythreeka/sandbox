@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { WorldSnapshotSchema } from "./world";
+import { WorldSnapshotSchema, WorldStatusSchema } from "./world";
 
 /** Socket.IO 事件名常數（前後端唯一來源，禁止手打字串） */
 export const WS_EVENTS = {
@@ -18,6 +18,7 @@ export const WS_EVENTS = {
   SERVER_BATTLE_START: "server:battle-start",
   BATTLE_UPDATE: "battle:update",
   BATTLE_END: "battle:end",
+  SERVER_VICTORY: "server:victory",
 } as const;
 
 export const ClientJoinSchema = z.object({
@@ -48,3 +49,10 @@ export const ServerErrorSchema = z.object({
   message: z.string(),
 });
 export type ServerErrorPayload = z.infer<typeof ServerErrorSchema>;
+
+export const ServerVictorySchema = z.object({
+  status: WorldStatusSchema,
+  tick: z.number().int().nonnegative(),
+  reason: z.enum(["REGION_DOMINANCE", "ASSET_TARGET"]),
+});
+export type ServerVictoryPayload = z.infer<typeof ServerVictorySchema>;

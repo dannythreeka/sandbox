@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import {
   axialToOddr,
+  BALANCE,
   WS_EVENTS,
   type BattleStateView,
   type FleetTickDelta,
@@ -18,6 +19,7 @@ import {
   type ServerJoinedPayload,
   type ServerResyncPayload,
   type ServerTickPayload,
+  type ServerVictoryPayload,
   type WorldSnapshot,
 } from "@azure-voyage/shared";
 import { api, ApiError } from "@/lib/api";
@@ -29,6 +31,7 @@ import { TavernShipyardPanel } from "@/game/TavernShipyardPanel";
 import { BattleScene } from "@/game/BattleScene";
 import { ExplorationPanel } from "@/game/ExplorationPanel";
 import { DiscoveryPanel } from "@/game/DiscoveryPanel";
+import { InfluencePanel } from "@/game/InfluencePanel";
 
 type WsState = "connecting" | "joined" | "disconnected";
 
@@ -56,6 +59,7 @@ export default function PlayPage() {
   const [battleId, setBattleId] = useState<string | null>(null);
   const [battleState, setBattleState] = useState<BattleStateView | null>(null);
   const [battleLog, setBattleLog] = useState<string[]>([]);
+  const [victory, setVictory] = useState<ServerVictoryPayload | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const tickRef = useRef<number>(0);
   const inFlightRef = useRef(false);
@@ -124,6 +128,9 @@ export default function PlayPage() {
       setBattleState(null);
       api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
     });
+    socket.on(WS_EVENTS.SERVER_VICTORY, (payload: ServerVictoryPayload) => {
+      setVictory(payload);
+    });
     socket.on(WS_EVENTS.SERVER_ERROR, (err: { message: string }) => {
       inFlightRef.current = false;
       setError(err.message);
@@ -153,18 +160,20 @@ export default function PlayPage() {
   );
   // 伺服器存 axial 座標；SeaMap 畫布用 offset（col,row）座標系
   const fleetOffsetPos = pos ? axialToOddr(pos) : null;
+  // 重新整理頁面時若世界早已結束（例如先前已達成勝利），仍要顯示終局畫面
+  const gameEnded = victory !== null || (snapshot ? snapshot.world.status !== "ACTIVE" : false);
 
   // ── 節奏器：SAILING 時依速度檔每隔 N ms 送出 client:advance ──
   useEffect(() => {
     const intervalMs = SPEED_PRESETS[speedIdx].intervalMs;
-    if (activity !== "SAILING" || intervalMs === 0 || battleId !== null) return;
+    if (activity !== "SAILING" || intervalMs === 0 || battleId !== null || victory !== null) return;
     const timer = setInterval(() => {
       if (inFlightRef.current) return;
       inFlightRef.current = true;
       socketRef.current?.emit(WS_EVENTS.CLIENT_ADVANCE, { worldId, ticks: 1 });
     }, intervalMs);
     return () => clearInterval(timer);
-  }, [activity, speedIdx, worldId, battleId]);
+  }, [activity, speedIdx, worldId, battleId, victory]);
 
   async function handlePortClick(portId: string) {
     if (!fleet || activity === "IN_BATTLE" || activity === "EXPLORING") return;
@@ -209,6 +218,23 @@ export default function PlayPage() {
       {error && <p className="text-sm text-red-400">{error}</p>}
       {notice && <p className="text-sm text-emerald-300">{notice}</p>}
 
+      {gameEnded && (
+        <section className="panel border-2 border-gold bg-gold/10 text-center">
+          <h2 className="text-2xl font-bold text-gold">
+            商會稱霸四海！
+            {victory ? `第 ${victory.tick} 日達成勝利` : ""}
+          </h2>
+          {victory && (
+            <p className="mt-1 text-sm text-slate-300">
+              {victory.reason === "REGION_DOMINANCE" ? "海域霸權" : "累積總資產"}達成勝利條件。
+            </p>
+          )}
+          <Link href="/worlds" className="btn mt-3 inline-block">
+            回航海誌
+          </Link>
+        </section>
+      )}
+
       {snapshot && fleet && fleetOffsetPos ? (
         <>
           <section className="panel flex flex-wrap items-center justify-between gap-3">
@@ -226,6 +252,10 @@ export default function PlayPage() {
               <span>糧 {food}</span>
               <span>水 {water}</span>
               <span>士氣 {morale}</span>
+              <span>
+                霸權海域 {snapshot.victoryProgress.regionsDominated}/{BALANCE.VICTORY_REGIONS_REQUIRED}
+              </span>
+              <span>總資產 {snapshot.victoryProgress.totalAssets.toLocaleString("zh-TW")}</span>
             </div>
           </section>
 
@@ -310,6 +340,19 @@ export default function PlayPage() {
                 worldId={worldId}
                 portId={currentPort.portId}
                 onChanged={() => {
+                  api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
+                }}
+              />
+            </section>
+          )}
+
+          {activity === "DOCKED" && currentPort && (
+            <section className="panel">
+              <InfluencePanel
+                worldId={worldId}
+                portId={currentPort.portId}
+                gold={snapshot.playerGuild.gold}
+                onInvested={() => {
                   api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
                 }}
               />
