@@ -30,9 +30,18 @@ export const BALANCE = {
   NPC_HOME_INFLUENCE_MIN: 15,
   NPC_HOME_INFLUENCE_MAX: 25,
 
-  // ── 影響力結算（M3 起使用）──
+  // ── 影響力結算 ──
   INFLUENCE_DECAY: 0.001,
   GOODWILL_CONVERT_RATE: 0.05,
+  /** 交易額 → 商譽點轉換係數（docs/05 §4 goodwillFromTrade） */
+  GOODWILL_K: 0.6,
+  /** 影響力折扣上限（docs/01 §4.3）：買價最多 -8%、賣價最多 +8% */
+  MAX_INFLUENCE_DISCOUNT: 0.08,
+
+  // ── 市場價格（M3 起使用，docs/05 §2）──
+  SELL_RATIO: 0.92,
+  /** 每 tick 庫存回歸基準值的比例 */
+  MARKET_REGEN_RATE: 0.05,
 
   // ── 補給消耗（M2 起使用）──
   FOOD_PER_CREW_PER_TICK: 1,

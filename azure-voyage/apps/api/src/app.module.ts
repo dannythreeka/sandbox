@@ -8,6 +8,7 @@ import { ResponseInterceptor } from "./common/response/response.interceptor";
 import { ClockModule } from "./modules/clock/clock.module";
 import { GatewayModule } from "./gateway/gateway.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { MarketModule } from "./modules/market/market.module";
 import { VoyageModule } from "./modules/voyage/voyage.module";
 import { WorldModule } from "./modules/world/world.module";
 import { PrismaModule } from "./prisma/prisma.module";
@@ -37,6 +38,7 @@ import { RedisModule } from "./redis/redis.module";
     AuthModule,
     WorldModule,
     VoyageModule,
+    MarketModule,
     ClockModule,
     GatewayModule,
   ],

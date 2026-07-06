@@ -26,6 +26,9 @@ export const ERROR_CODES = [
   "ROUTE_INVALID",
   "NO_ROUTE_SET",
   "FLEET_BUSY",
+  // 貿易（M3）
+  "STOCK_INSUFFICIENT",
+  "COMMODITY_UNAVAILABLE",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -66,4 +69,6 @@ export const ERROR_MESSAGES_ZH_TW: Record<ErrorCode, string> = {
   ROUTE_INVALID: "找不到通往目的港的航線",
   NO_ROUTE_SET: "尚未設定航線",
   FLEET_BUSY: "艦隊目前無法執行此操作",
+  STOCK_INSUFFICIENT: "數量不足（市場庫存或貨艙存貨不夠）",
+  COMMODITY_UNAVAILABLE: "此港口不販售此商品",
 };
