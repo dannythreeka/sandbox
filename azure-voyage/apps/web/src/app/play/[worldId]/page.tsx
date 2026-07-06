@@ -2,24 +2,34 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import {
+  axialToOddr,
   WS_EVENTS,
+  type FleetTickDelta,
+  type RouteView,
+  type ServerArrivalPayload,
   type ServerJoinedPayload,
   type ServerResyncPayload,
+  type ServerTickPayload,
   type WorldSnapshot,
 } from "@azure-voyage/shared";
 import { api, ApiError } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { createGameSocket } from "@/lib/socket";
+import { SeaMap } from "@/game/SeaMap";
 
 type WsState = "connecting" | "joined" | "disconnected";
 
-/**
- * M0 的遊戲頁：載入世界快照 + 建立 WS 房間連線並顯示連線狀態。
- * M2 起這裡換成 GameRoot（PixiJS 海圖場景，見 docs/07）。
- */
+/** 航行速度檔位（毫秒／tick，docs/07 §3） */
+const SPEED_PRESETS = [
+  { label: "暫停", intervalMs: 0 },
+  { label: "1x", intervalMs: 1500 },
+  { label: "2x", intervalMs: 750 },
+  { label: "4x", intervalMs: 300 },
+] as const;
+
 export default function PlayPage() {
   const params = useParams<{ worldId: string }>();
   const router = useRouter();
@@ -28,9 +38,14 @@ export default function PlayPage() {
   const [snapshot, setSnapshot] = useState<WorldSnapshot | null>(null);
   const [wsState, setWsState] = useState<WsState>("connecting");
   const [tick, setTick] = useState<number | null>(null);
+  const [fleetDelta, setFleetDelta] = useState<FleetTickDelta | null>(null);
+  const [route, setRoute] = useState<RouteView | null>(null);
+  const [speedIdx, setSpeedIdx] = useState(1);
+  const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const tickRef = useRef<number>(0);
+  const inFlightRef = useRef(false);
 
   useEffect(() => {
     if (!getAccessToken()) {
@@ -41,16 +56,12 @@ export default function PlayPage() {
     api
       .getWorld(worldId)
       .then(setSnapshot)
-      .catch((err) => {
-        setError(err instanceof ApiError ? err.message : "載入世界失敗");
-      });
+      .catch((err) => setError(err instanceof ApiError ? err.message : "載入世界失敗"));
 
     const socket = createGameSocket();
     socketRef.current = socket;
 
-    socket.on("connect", () => {
-      socket.emit(WS_EVENTS.CLIENT_JOIN, { worldId });
-    });
+    socket.on("connect", () => socket.emit(WS_EVENTS.CLIENT_JOIN, { worldId }));
     socket.on(WS_EVENTS.SERVER_JOINED, (payload: ServerJoinedPayload) => {
       setWsState("joined");
       setTick(payload.tick);
@@ -61,7 +72,22 @@ export default function PlayPage() {
       tickRef.current = payload.tick;
       setSnapshot(payload.snapshot);
     });
+    socket.on(WS_EVENTS.SERVER_TICK, (payload: ServerTickPayload) => {
+      inFlightRef.current = false;
+      setTick(payload.tick);
+      tickRef.current = payload.tick;
+      const mine = payload.fleets[0]; // M2：玩家僅一支艦隊
+      if (mine) {
+        setFleetDelta(mine);
+        if (mine.activity === "DOCKED") setRoute(null);
+      }
+    });
+    socket.on(WS_EVENTS.SERVER_ARRIVAL, (payload: ServerArrivalPayload) => {
+      setNotice(`艦隊已抵達 ${payload.portId}`);
+      api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
+    });
     socket.on(WS_EVENTS.SERVER_ERROR, (err: { message: string }) => {
+      inFlightRef.current = false;
       setError(err.message);
     });
     socket.on("disconnect", () => setWsState("disconnected"));
@@ -75,10 +101,58 @@ export default function PlayPage() {
     };
   }, [worldId, router]);
 
-  const world = snapshot?.world;
+  const fleet = snapshot?.fleets[0];
+  const activity = fleetDelta?.activity ?? fleet?.activity;
+  const pos = fleetDelta?.pos ?? fleet?.pos;
+  const food = fleetDelta?.food ?? fleet?.food ?? 0;
+  const water = fleetDelta?.water ?? fleet?.water ?? 0;
+  const morale = fleetDelta?.morale ?? fleet?.morale ?? 0;
+  const dockedPortId = fleetDelta ? fleetDelta.dockedPortId : (fleet?.dockedPortId ?? null);
+  const currentPort = snapshot?.knownPorts.find((p) => p.portId === dockedPortId);
+  const visitedPortIds = useMemo(
+    () => new Set(snapshot?.knownPorts.filter((p) => p.visited).map((p) => p.portId) ?? []),
+    [snapshot],
+  );
+  // 伺服器存 axial 座標；SeaMap 畫布用 offset（col,row）座標系
+  const fleetOffsetPos = pos ? axialToOddr(pos) : null;
+
+  // ── 節奏器：SAILING 時依速度檔每隔 N ms 送出 client:advance ──
+  useEffect(() => {
+    const intervalMs = SPEED_PRESETS[speedIdx].intervalMs;
+    if (activity !== "SAILING" || intervalMs === 0) return;
+    const timer = setInterval(() => {
+      if (inFlightRef.current) return;
+      inFlightRef.current = true;
+      socketRef.current?.emit(WS_EVENTS.CLIENT_ADVANCE, { worldId, ticks: 1 });
+    }, intervalMs);
+    return () => clearInterval(timer);
+  }, [activity, speedIdx, worldId]);
+
+  async function handlePortClick(portId: string) {
+    if (!fleet || activity === "IN_BATTLE" || activity === "EXPLORING") return;
+    setError(null);
+    try {
+      const r = await api.setRoute(worldId, fleet.id, portId);
+      setRoute(r);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "設定航線失敗");
+    }
+  }
+
+  async function handleDepart() {
+    if (!fleet) return;
+    setError(null);
+    try {
+      await api.depart(worldId, fleet.id);
+      setFleetDelta((prev) => (prev ? { ...prev, activity: "SAILING", dockedPortId: null } : prev));
+      setNotice(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "出港失敗");
+    }
+  }
 
   return (
-    <main className="space-y-6">
+    <main className="space-y-4">
       <header className="flex items-center justify-between">
         <Link href="/worlds" className="btn-ghost">
           ← 回航海誌
@@ -90,77 +164,72 @@ export default function PlayPage() {
               : "rounded-full bg-amber-500/20 px-3 py-1 text-sm text-amber-300"
           }
         >
-          {wsState === "joined"
-            ? "已連線至世界頻道"
-            : wsState === "connecting"
-              ? "連線中…"
-              : "已斷線，重連中…"}
+          {wsState === "joined" ? "已連線" : wsState === "connecting" ? "連線中…" : "已斷線，重連中…"}
         </span>
       </header>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
+      {notice && <p className="text-sm text-emerald-300">{notice}</p>}
 
-      {world && snapshot ? (
+      {snapshot && fleet && fleetOffsetPos ? (
         <>
-          <section className="panel space-y-2">
-            <h1 className="text-2xl font-bold text-foam">{world.name}</h1>
-            <p className="text-slate-300">
-              航行第 <span className="font-mono text-gold">{tick ?? world.currentTick}</span> 日
-              · 難度 {world.difficulty} · 世界種子 <span className="font-mono">{world.seed}</span>
-            </p>
-            <p className="text-slate-300">
-              {snapshot.playerGuild.name} · 資金{" "}
-              <span className="font-mono text-gold">
-                {snapshot.playerGuild.gold.toLocaleString("zh-TW")}
-              </span>{" "}
-              金 · 聲望 {snapshot.playerGuild.fame}
-            </p>
-            <p className="text-sm text-slate-500">
-              內容版本 {world.contentVersion} · 已知港口 {snapshot.knownPorts.length} · 對手商會{" "}
-              {snapshot.npcGuilds.map((g) => g.name).join("、")}
-            </p>
+          <section className="panel flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-bold text-foam">{snapshot.world.name}</h1>
+              <p className="text-sm text-slate-400">
+                第 <span className="font-mono text-gold">{tick ?? snapshot.world.currentTick}</span>{" "}
+                日 · {snapshot.playerGuild.name} · 資金{" "}
+                <span className="font-mono text-gold">
+                  {snapshot.playerGuild.gold.toLocaleString("zh-TW")}
+                </span>
+              </p>
+            </div>
+            <div className="flex gap-4 text-sm text-slate-300">
+              <span>糧 {food}</span>
+              <span>水 {water}</span>
+              <span>士氣 {morale}</span>
+            </div>
           </section>
 
-          {snapshot.fleets.map((fleet) => {
-            const home = snapshot.knownPorts.find((p) => p.portId === fleet.dockedPortId);
-            return (
-              <section key={fleet.id} className="panel space-y-3">
-                <h2 className="text-xl font-semibold text-foam">
-                  {fleet.name}
-                  <span className="ml-2 text-sm font-normal text-slate-400">
-                    {fleet.activity === "DOCKED" && home
-                      ? `停靠於 ${home.name}`
-                      : fleet.activity}
-                    · 糧 {fleet.food} · 水 {fleet.water} · 士氣 {fleet.morale}
-                  </span>
-                </h2>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {fleet.ships.map((ship) => (
-                    <div key={ship.id} className="rounded-md border border-foam/20 p-3">
-                      <p className="font-medium">
-                        {ship.isFlagship ? "⚓ " : ""}
-                        {ship.name}
-                      </p>
-                      <p className="text-sm text-slate-400">
-                        耐久 {ship.hull} · 帆 {ship.sails}% · 船員 {ship.crew}
-                      </p>
-                    </div>
-                  ))}
-                  {fleet.officers.map((officer) => (
-                    <div key={officer.id} className="rounded-md border border-foam/20 p-3">
-                      <p className="font-medium">{officer.name}</p>
-                      <p className="text-sm text-slate-400">
-                        統率 {officer.stats.lead} · 航海 {officer.stats.nav} · 戰鬥{" "}
-                        {officer.stats.combat} · 商才 {officer.stats.trade} · 學識{" "}
-                        {officer.stats.lore}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-slate-500">海圖航行將在 M2 里程碑開放。</p>
-              </section>
-            );
-          })}
+          <SeaMap
+            fleetPos={fleetOffsetPos}
+            routeWaypoints={route?.waypoints ?? null}
+            visitedPortIds={visitedPortIds}
+            onPortClick={handlePortClick}
+          />
+
+          <section className="panel flex flex-wrap items-center gap-4">
+            {activity === "DOCKED" && currentPort && (
+              <>
+                <p className="text-slate-200">
+                  停靠於 <span className="font-medium text-gold">{currentPort.name}</span>
+                  ——點擊海圖上的港口標記設定航線。
+                </p>
+                {route && (
+                  <button className="btn" onClick={handleDepart}>
+                    出港（前往 {route.targetPortId}）
+                  </button>
+                )}
+              </>
+            )}
+            {activity === "SAILING" && (
+              <div className="flex items-center gap-2">
+                <span className="text-slate-300">航速：</span>
+                {SPEED_PRESETS.map((s, i) => (
+                  <button
+                    key={s.label}
+                    className={i === speedIdx ? "btn" : "btn-ghost"}
+                    onClick={() => setSpeedIdx(i)}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+                {route?.targetPortId && (
+                  <span className="text-sm text-slate-400">航向 {route.targetPortId}</span>
+                )}
+              </div>
+            )}
+          </section>
         </>
       ) : (
         !error && <p className="text-slate-400">載入世界中…</p>
