@@ -19,6 +19,7 @@ import { api, ApiError } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { createGameSocket } from "@/lib/socket";
 import { SeaMap } from "@/game/SeaMap";
+import { TradePanel } from "@/game/TradePanel";
 
 type WsState = "connecting" | "joined" | "disconnected";
 
@@ -230,6 +231,20 @@ export default function PlayPage() {
               </div>
             )}
           </section>
+
+          {activity === "DOCKED" && currentPort && fleet.ships[0] && (
+            <section className="panel">
+              <TradePanel
+                worldId={worldId}
+                portId={currentPort.portId}
+                fleetId={fleet.id}
+                shipId={fleet.ships[0].id}
+                onTraded={() => {
+                  api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
+                }}
+              />
+            </section>
+          )}
         </>
       ) : (
         !error && <p className="text-slate-400">載入世界中…</p>

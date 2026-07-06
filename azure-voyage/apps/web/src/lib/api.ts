@@ -8,8 +8,11 @@ import {
   type CreateWorldInput,
   type ErrorCode,
   type LoginInput,
+  type PortDetail,
   type RegisterInput,
   type RouteView,
+  type TradeInput,
+  type TradeResult,
   type WorldSnapshot,
   type WorldSummary,
 } from "@azure-voyage/shared";
@@ -103,5 +106,12 @@ export const api = {
   depart: (worldId: string, fleetId: string) =>
     request<{ departed: boolean }>(`/worlds/${worldId}/fleets/${fleetId}/depart`, {
       method: "POST",
+    }),
+  getPort: (worldId: string, portId: string) =>
+    request<PortDetail>(`/worlds/${worldId}/ports/${portId}`),
+  trade: (worldId: string, portId: string, input: TradeInput) =>
+    request<TradeResult>(`/worlds/${worldId}/ports/${portId}/trade`, {
+      method: "POST",
+      body: input,
     }),
 };

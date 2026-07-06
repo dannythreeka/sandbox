@@ -16,6 +16,8 @@ export * from "./rules/hexmap";
 export * from "./rules/pathfind";
 export * from "./rules/movement";
 export * from "./rules/supplies";
+export * from "./rules/pricing";
+export * from "./rules/influence";
 export * from "./rules/worldgen";
 
 // schemas & errors
@@ -23,4 +25,5 @@ export * from "./errors";
 export * from "./schemas/auth";
 export * from "./schemas/world";
 export * from "./schemas/voyage";
+export * from "./schemas/market";
 export * from "./schemas/ws";
