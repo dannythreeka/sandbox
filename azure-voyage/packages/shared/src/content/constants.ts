@@ -67,6 +67,23 @@ export const BALANCE = {
   /** 戰敗被拖回母港的贖金比例（現有資金） */
   DEFEAT_RANSOM_RATIO: 0.1,
 
+  // ── 探索與事件（M6 起使用）──
+  /** 探索點判定半徑（offset 格距離） */
+  EXPLORE_RADIUS: 2,
+  EXPLORE_FOOD_COST: 5,
+  EXPLORE_WATER_COST: 5,
+  /** 每 tick 風暴機率 = 海域危險度 × 此係數（獨立於海賊遭遇） */
+  STORM_CHANCE_PER_DANGER: 0.08,
+  /** 風暴對船體造成的傷害比例（占最大耐久） */
+  STORM_HULL_DAMAGE_RATIO: 0.1,
+  STORM_SUPPLY_LOSS: 8,
+  /** 港口慶典排程間隔與持續時間 */
+  FESTIVAL_INTERVAL_TICKS: 25,
+  FESTIVAL_DURATION_TICKS: 10,
+  FESTIVAL_PROSPERITY_BOOST: 15,
+  /** 登錄發現物的學會港口最低規模 */
+  GUILD_HALL_MIN_PORT_SIZE: 2,
+
   // ── 存檔 ──
   MAX_ACTIVE_WORLDS_PER_USER: 5,
 } as const;

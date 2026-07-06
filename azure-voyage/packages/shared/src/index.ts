@@ -7,6 +7,7 @@ export * from "./content/ports";
 export * from "./content/shipClasses";
 export * from "./content/npcGuilds";
 export * from "./content/officersPool";
+export * from "./content/discoveries";
 export * from "./content/map/hexmap";
 
 // rules
@@ -19,6 +20,7 @@ export * from "./rules/supplies";
 export * from "./rules/pricing";
 export * from "./rules/influence";
 export * from "./rules/battle";
+export * from "./rules/exploration";
 export * from "./rules/worldgen";
 
 // schemas & errors
@@ -29,4 +31,5 @@ export * from "./schemas/voyage";
 export * from "./schemas/market";
 export * from "./schemas/officer";
 export * from "./schemas/battle";
+export * from "./schemas/event";
 export * from "./schemas/ws";

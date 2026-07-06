@@ -95,6 +95,17 @@ export class VoyageService {
     return { departed: true };
   }
 
+  /** 海上下錨／收錨（docs/04 §3）：ANCHORED 艦隊暫停移動與遭遇，供探索使用。 */
+  async toggleAnchor(userId: string, worldId: string, fleetId: string) {
+    const fleet = await this.getOwnedPlayerFleet(userId, worldId, fleetId);
+    if (fleet.activity !== "SAILING" && fleet.activity !== "ANCHORED") {
+      throw new GameError("FLEET_BUSY");
+    }
+    const activity = fleet.activity === "SAILING" ? "ANCHORED" : "SAILING";
+    await this.prisma.fleet.update({ where: { id: fleet.id }, data: { activity } });
+    return { activity };
+  }
+
   /**
    * 單一 tick 的航行推進（docs/05 §1 PHASE 2/3/9 的 M2 子集）。
    * 供 BullMQ processor 呼叫；完成後以 domain event 廣播，讓 gateway 決定怎麼推播。

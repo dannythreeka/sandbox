@@ -35,6 +35,10 @@ export const ERROR_CODES = [
   // 海戰（M5）
   "BATTLE_ACTION_INVALID",
   "BATTLE_NOT_ACTIVE",
+  // 探索與發現物（M6）
+  "NOT_NEAR_DISCOVERY_SITE",
+  "DISCOVERY_ALREADY_REGISTERED",
+  "NO_GUILD_HALL",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -81,4 +85,7 @@ export const ERROR_MESSAGES_ZH_TW: Record<ErrorCode, string> = {
   CANNOT_SELL_LAST_SHIP: "無法賣出艦隊僅存的最後一艘船",
   BATTLE_ACTION_INVALID: "無效的戰鬥行動",
   BATTLE_NOT_ACTIVE: "戰鬥已結束",
+  NOT_NEAR_DISCOVERY_SITE: "附近沒有可探索的發現物",
+  DISCOVERY_ALREADY_REGISTERED: "此發現物已登錄過",
+  NO_GUILD_HALL: "此港口沒有學會分部",
 };
