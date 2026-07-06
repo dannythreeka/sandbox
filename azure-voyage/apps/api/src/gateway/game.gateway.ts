@@ -1,4 +1,5 @@
 import { Logger, UseFilters } from "@nestjs/common";
+import { OnEvent } from "@nestjs/event-emitter";
 import { JwtService } from "@nestjs/jwt";
 import {
   ConnectedSocket,
@@ -6,12 +7,15 @@ import {
   OnGatewayConnection,
   SubscribeMessage,
   WebSocketGateway,
+  WebSocketServer,
 } from "@nestjs/websockets";
-import type { Socket } from "socket.io";
+import type { Server, Socket } from "socket.io";
 import {
+  ClientAdvanceSchema,
   ClientJoinSchema,
   ClientResyncSchema,
   WS_EVENTS,
+  type ClientAdvancePayload,
   type ServerJoinedPayload,
   type ServerResyncPayload,
 } from "@azure-voyage/shared";
@@ -19,6 +23,11 @@ import { AllExceptionsFilter } from "../common/errors/all-exceptions.filter";
 import { GameError } from "../common/errors/game-error";
 import type { JwtPayload } from "../common/auth/jwt-payload";
 import { ZodPipe } from "../common/zod/zod.pipe";
+import { ClockService } from "../modules/clock/clock.service";
+import type {
+  WorldArrivalEventPayload,
+  WorldTickEventPayload,
+} from "../modules/voyage/voyage.service";
 import { WorldService } from "../modules/world/world.service";
 
 interface GameSocketData {
@@ -35,11 +44,15 @@ export function worldRoom(worldId: string): string {
 })
 @UseFilters(AllExceptionsFilter)
 export class GameGateway implements OnGatewayConnection {
+  @WebSocketServer()
+  private readonly server!: Server;
+
   private readonly logger = new Logger(GameGateway.name);
 
   constructor(
     private readonly jwtService: JwtService,
     private readonly worldService: WorldService,
+    private readonly clockService: ClockService,
   ) {}
 
   /** 握手驗證：handshake.auth.token 必須是有效 access token，否則直接斷線。 */
@@ -79,6 +92,27 @@ export class GameGateway implements OnGatewayConnection {
     const resync: ServerResyncPayload = { tick: snapshot.world.currentTick, snapshot };
     socket.emit(WS_EVENTS.SERVER_RESYNC, resync);
     return resync;
+  }
+
+  @SubscribeMessage(WS_EVENTS.CLIENT_ADVANCE)
+  async onAdvance(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody(new ZodPipe(ClientAdvanceSchema)) body: ClientAdvancePayload,
+  ) {
+    const userId = this.requireUser(socket);
+    // 廣播由 ClockService → VoyageService 觸發的 domain event 負責（見下方 @OnEvent）；
+    // 這裡的回傳值只作為呼叫方的 ack。
+    return this.clockService.requestAdvance(userId, body.worldId, body.ticks);
+  }
+
+  @OnEvent("world.tick")
+  onWorldTick({ worldId, payload }: WorldTickEventPayload): void {
+    this.server.to(worldRoom(worldId)).emit(WS_EVENTS.SERVER_TICK, payload);
+  }
+
+  @OnEvent("world.arrival")
+  onWorldArrival({ worldId, payload }: WorldArrivalEventPayload): void {
+    this.server.to(worldRoom(worldId)).emit(WS_EVENTS.SERVER_ARRIVAL, payload);
   }
 
   private requireUser(socket: Socket): string {

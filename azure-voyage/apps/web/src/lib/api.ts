@@ -9,6 +9,7 @@ import {
   type ErrorCode,
   type LoginInput,
   type RegisterInput,
+  type RouteView,
   type WorldSnapshot,
   type WorldSummary,
 } from "@azure-voyage/shared";
@@ -94,4 +95,13 @@ export const api = {
     request<WorldSummary>("/worlds", { method: "POST", body: input }),
   getWorld: (id: string) => request<WorldSnapshot>(`/worlds/${id}`),
   abandonWorld: (id: string) => request<WorldSummary>(`/worlds/${id}`, { method: "DELETE" }),
+  setRoute: (worldId: string, fleetId: string, targetPortId: string) =>
+    request<RouteView>(`/worlds/${worldId}/fleets/${fleetId}/route`, {
+      method: "POST",
+      body: { targetPortId },
+    }),
+  depart: (worldId: string, fleetId: string) =>
+    request<{ departed: boolean }>(`/worlds/${worldId}/fleets/${fleetId}/depart`, {
+      method: "POST",
+    }),
 };

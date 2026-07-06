@@ -22,6 +22,10 @@ export const ERROR_CODES = [
   "CARGO_FULL",
   "PORT_NOT_DOCKED",
   "AI_UNAVAILABLE",
+  // 航行（M2）
+  "ROUTE_INVALID",
+  "NO_ROUTE_SET",
+  "FLEET_BUSY",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -59,4 +63,7 @@ export const ERROR_MESSAGES_ZH_TW: Record<ErrorCode, string> = {
   CARGO_FULL: "貨艙已滿",
   PORT_NOT_DOCKED: "艦隊未停靠此港口",
   AI_UNAVAILABLE: "智慧內容暫時無法使用",
+  ROUTE_INVALID: "找不到通往目的港的航線",
+  NO_ROUTE_SET: "尚未設定航線",
+  FLEET_BUSY: "艦隊目前無法執行此操作",
 };
