@@ -37,6 +37,8 @@ export const BALANCE = {
   GOODWILL_K: 0.6,
   /** 影響力折扣上限（docs/01 §4.3）：買價最多 -8%、賣價最多 +8% */
   MAX_INFLUENCE_DISCOUNT: 0.08,
+  /** 港口投資基準成本（docs/01 §4.3 investmentGain 分母） */
+  INVESTMENT_COST_BASE: 40,
 
   // ── 市場價格（M3 起使用，docs/05 §2）──
   SELL_RATIO: 0.92,
@@ -84,6 +86,20 @@ export const BALANCE = {
   /** 登錄發現物的學會港口最低規模 */
   GUILD_HALL_MIN_PORT_SIZE: 2,
 
+  // ── NPC 商會（M7 起使用）──
+  /** 每隔幾 tick 讓每個 NPC 商會做一次投資行動 */
+  NPC_ACT_INTERVAL_TICKS: 5,
+  /** 每次行動投入現有資金的比例（乘上該商會的 riskTolerance） */
+  NPC_INVEST_GOLD_FRACTION: 0.05,
+
+  // ── 勝利條件（M7 起使用，docs/02 §2）──
+  /** 海域霸權門檻：該海域內單一商會份額需達到的百分比 */
+  REGION_DOMINANCE_SHARE: 40,
+  /** 達成海域霸權的海域數門檻（共 7 海域） */
+  VICTORY_REGIONS_REQUIRED: 4,
+  /** 總資產勝利門檻（金額，難度乘數同 startingGold） */
+  VICTORY_ASSET_TARGET: 800000,
+
   // ── 存檔 ──
   MAX_ACTIVE_WORLDS_PER_USER: 5,
 } as const;
@@ -100,4 +116,9 @@ export const DIFFICULTY_MODS: Record<
 
 export function startingGold(difficulty: Difficulty): number {
   return Math.round(BALANCE.STARTING_GOLD * DIFFICULTY_MODS[difficulty].startingGoldMul);
+}
+
+/** 難度越高，總資產勝利門檻越低（補償較少的起始資金與較高的遭遇率）。 */
+export function victoryAssetTarget(difficulty: Difficulty): number {
+  return Math.round(BALANCE.VICTORY_ASSET_TARGET / DIFFICULTY_MODS[difficulty].encounterMul);
 }

@@ -5,6 +5,7 @@ import {
   buildNewWorldPlan,
   CONTENT_VERSION,
   PORTS,
+  regionsDominatedBy,
   shipClassById,
   WorldSnapshotSchema,
   type CreateWorldInput,
@@ -213,7 +214,7 @@ export class WorldService {
   async getSnapshot(userId: string, worldId: string): Promise<WorldSnapshot> {
     const world = await this.getOwned(userId, worldId);
 
-    const [guilds, fleets] = await Promise.all([
+    const [guilds, fleets, influenceRows, relicsFound] = await Promise.all([
       this.prisma.guild.findMany({ where: { worldId } }),
       this.prisma.fleet.findMany({
         where: { worldId, guild: { kind: "PLAYER" } },
@@ -222,6 +223,11 @@ export class WorldService {
           officers: true,
         },
       }),
+      this.prisma.portInfluence.findMany({
+        where: { portState: { worldId } },
+        include: { portState: true },
+      }),
+      this.prisma.discoveryRecord.count({ where: { worldId, registered: true } }),
     ]);
 
     const playerGuild = guilds.find((g) => g.kind === "PLAYER");
@@ -233,6 +239,10 @@ export class WorldService {
     const shipValue = fleets
       .flatMap((f) => f.ships)
       .reduce((acc, s) => acc + shipClassById(s.shipClassId).price, 0);
+    const regionsDominated = regionsDominatedBy(
+      playerGuild.id,
+      influenceRows.map((r) => ({ portId: r.portState.portId, guildId: r.guildId, share: Number(r.share) })),
+    );
 
     const snapshot: WorldSnapshot = {
       world: { ...this.toSummary(world), seed: world.seed },
@@ -289,8 +299,8 @@ export class WorldService {
         .filter((g) => g.kind === "NPC")
         .map((g) => ({ id: g.id, name: g.name, color: g.color, fame: g.fame })),
       victoryProgress: {
-        regionsDominated: 0,
-        relicsFound: 0,
+        regionsDominated,
+        relicsFound,
         totalAssets: Number(playerGuild.gold) + shipValue,
       },
     };

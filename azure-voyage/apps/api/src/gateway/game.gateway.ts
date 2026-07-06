@@ -151,6 +151,11 @@ export class GameGateway implements OnGatewayConnection {
     this.server.to(worldRoom(worldId)).emit(WS_EVENTS.BATTLE_END, payload);
   }
 
+  @OnEvent("world.victory")
+  onWorldVictory({ worldId, payload }: { worldId: string; payload: unknown }): void {
+    this.server.to(worldRoom(worldId)).emit(WS_EVENTS.SERVER_VICTORY, payload);
+  }
+
   private requireUser(socket: Socket): string {
     const userId = (socket.data as Partial<GameSocketData>).userId;
     if (!userId) {

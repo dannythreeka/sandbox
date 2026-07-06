@@ -9,6 +9,7 @@ import {
   type DiscoveryRecordView,
   type ErrorCode,
   type ExploreResult,
+  type InvestResult,
   type LoginInput,
   type PortDetail,
   type RegisterDiscoveryResult,
@@ -130,4 +131,9 @@ export const api = {
       `/worlds/${worldId}/ports/${portId}/guild-hall/register-discovery`,
       { method: "POST", body: { discoveryRecordId } },
     ),
+  invest: (worldId: string, portId: string, amount: number) =>
+    request<InvestResult>(`/worlds/${worldId}/ports/${portId}/invest`, {
+      method: "POST",
+      body: { amount },
+    }),
 };
