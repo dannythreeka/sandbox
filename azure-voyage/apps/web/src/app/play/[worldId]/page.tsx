@@ -7,9 +7,13 @@ import type { Socket } from "socket.io-client";
 import {
   axialToOddr,
   WS_EVENTS,
+  type BattleStateView,
   type FleetTickDelta,
   type RouteView,
   type ServerArrivalPayload,
+  type ServerBattleEndPayload,
+  type ServerBattleStartPayload,
+  type ServerBattleUpdatePayload,
   type ServerJoinedPayload,
   type ServerResyncPayload,
   type ServerTickPayload,
@@ -21,6 +25,7 @@ import { createGameSocket } from "@/lib/socket";
 import { SeaMap } from "@/game/SeaMap";
 import { TradePanel } from "@/game/TradePanel";
 import { TavernShipyardPanel } from "@/game/TavernShipyardPanel";
+import { BattleScene } from "@/game/BattleScene";
 
 type WsState = "connecting" | "joined" | "disconnected";
 
@@ -45,6 +50,9 @@ export default function PlayPage() {
   const [speedIdx, setSpeedIdx] = useState(1);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [battleId, setBattleId] = useState<string | null>(null);
+  const [battleState, setBattleState] = useState<BattleStateView | null>(null);
+  const [battleLog, setBattleLog] = useState<string[]>([]);
   const socketRef = useRef<Socket | null>(null);
   const tickRef = useRef<number>(0);
   const inFlightRef = useRef(false);
@@ -88,6 +96,27 @@ export default function PlayPage() {
       setNotice(`艦隊已抵達 ${payload.portId}`);
       api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
     });
+    socket.on(WS_EVENTS.SERVER_BATTLE_START, (payload: ServerBattleStartPayload) => {
+      setBattleId(payload.battleId);
+      setBattleState(payload.battle.state);
+      setBattleLog([]);
+    });
+    socket.on(WS_EVENTS.BATTLE_UPDATE, (payload: ServerBattleUpdatePayload) => {
+      setBattleState(payload.state);
+      setBattleLog((prev) => [...prev, payload.log]);
+    });
+    socket.on(WS_EVENTS.BATTLE_END, (payload: ServerBattleEndPayload) => {
+      setNotice(
+        payload.status === "PLAYER_WIN"
+          ? "戰鬥勝利！"
+          : payload.status === "FLED"
+            ? "成功脫離戰場。"
+            : "艦隊戰敗，被拖回母港療傷……",
+      );
+      setBattleId(null);
+      setBattleState(null);
+      api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
+    });
     socket.on(WS_EVENTS.SERVER_ERROR, (err: { message: string }) => {
       inFlightRef.current = false;
       setError(err.message);
@@ -121,14 +150,14 @@ export default function PlayPage() {
   // ── 節奏器：SAILING 時依速度檔每隔 N ms 送出 client:advance ──
   useEffect(() => {
     const intervalMs = SPEED_PRESETS[speedIdx].intervalMs;
-    if (activity !== "SAILING" || intervalMs === 0) return;
+    if (activity !== "SAILING" || intervalMs === 0 || battleId !== null) return;
     const timer = setInterval(() => {
       if (inFlightRef.current) return;
       inFlightRef.current = true;
       socketRef.current?.emit(WS_EVENTS.CLIENT_ADVANCE, { worldId, ticks: 1 });
     }, intervalMs);
     return () => clearInterval(timer);
-  }, [activity, speedIdx, worldId]);
+  }, [activity, speedIdx, worldId, battleId]);
 
   async function handlePortClick(portId: string) {
     if (!fleet || activity === "IN_BATTLE" || activity === "EXPLORING") return;
@@ -262,6 +291,15 @@ export default function PlayPage() {
         </>
       ) : (
         !error && <p className="text-slate-400">載入世界中…</p>
+      )}
+
+      {battleId && battleState && socketRef.current && (
+        <BattleScene
+          socket={socketRef.current}
+          battleId={battleId}
+          state={battleState}
+          log={battleLog}
+        />
       )}
     </main>
   );

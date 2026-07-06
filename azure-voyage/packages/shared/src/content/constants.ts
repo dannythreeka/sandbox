@@ -59,6 +59,14 @@ export const BALANCE = {
   /** 賣船退款比例（原價的比例） */
   SHIP_SELL_REFUND_RATIO: 0.5,
 
+  // ── 海戰與遭遇（M5 起使用）──
+  /** 每 tick 遭遇機率 = 海域危險度 × 此係數 */
+  ENCOUNTER_CHANCE_PER_DANGER: 0.15,
+  /** 擊沉敵艦的戰利品 = 該船級造價 × 此比例 */
+  BATTLE_LOOT_RATIO: 0.15,
+  /** 戰敗被拖回母港的贖金比例（現有資金） */
+  DEFEAT_RANSOM_RATIO: 0.1,
+
   // ── 存檔 ──
   MAX_ACTIVE_WORLDS_PER_USER: 5,
 } as const;

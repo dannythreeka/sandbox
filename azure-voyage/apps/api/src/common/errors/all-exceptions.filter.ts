@@ -65,6 +65,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (host.getType() === "ws") {
       const client = host.switchToWs().getClient<Socket>();
       client.emit(WS_EVENTS.SERVER_ERROR, body.error);
+
+      // Socket.IO 的 ack 回呼是原始 handler 參數的最後一個（若呼叫端有帶 ack）。
+      // 正常回傳路徑由 Nest 自動幫忙呼叫 ack，但例外會整個繞過那條路徑——
+      // 若不在這裡手動補呼叫，呼叫端用 Promise 包 ack 的寫法會永遠掛著等不到回應
+      // （曾在戰鬥面板「執行」按鈕卡死、以及 client:advance 失敗時的整合測試中實際發生過）。
+      const args = host.getArgs<unknown[]>();
+      const maybeAck = args[args.length - 1];
+      if (typeof maybeAck === "function") {
+        (maybeAck as (response: unknown) => void)({ error: body.error });
+      }
     }
   }
 }

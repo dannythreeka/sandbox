@@ -12,10 +12,12 @@ import {
 import type { Server, Socket } from "socket.io";
 import {
   ClientAdvanceSchema,
+  ClientBattleActionSchema,
   ClientJoinSchema,
   ClientResyncSchema,
   WS_EVENTS,
   type ClientAdvancePayload,
+  type ClientBattleActionPayload,
   type ServerJoinedPayload,
   type ServerResyncPayload,
 } from "@azure-voyage/shared";
@@ -23,6 +25,7 @@ import { AllExceptionsFilter } from "../common/errors/all-exceptions.filter";
 import { GameError } from "../common/errors/game-error";
 import type { JwtPayload } from "../common/auth/jwt-payload";
 import { ZodPipe } from "../common/zod/zod.pipe";
+import { BattleService } from "../modules/battle/battle.service";
 import { ClockService } from "../modules/clock/clock.service";
 import type {
   WorldArrivalEventPayload,
@@ -53,6 +56,7 @@ export class GameGateway implements OnGatewayConnection {
     private readonly jwtService: JwtService,
     private readonly worldService: WorldService,
     private readonly clockService: ClockService,
+    private readonly battleService: BattleService,
   ) {}
 
   /** 握手驗證：handshake.auth.token 必須是有效 access token，否則直接斷線。 */
@@ -105,6 +109,18 @@ export class GameGateway implements OnGatewayConnection {
     return this.clockService.requestAdvance(userId, body.worldId, body.ticks);
   }
 
+  @SubscribeMessage(WS_EVENTS.BATTLE_ACTION)
+  async onBattleAction(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody(new ZodPipe(ClientBattleActionSchema)) body: ClientBattleActionPayload,
+  ) {
+    const userId = this.requireUser(socket);
+    // 找出這個 socket 目前加入的世界房間，逐一嘗試（單一玩家通常只加入一個世界房間）
+    const worldId = [...socket.rooms].find((r) => r.startsWith("world:"))?.slice("world:".length);
+    if (!worldId) throw new GameError("NOT_FOUND");
+    return this.battleService.applyAction(userId, worldId, body.battleId, body.action);
+  }
+
   @OnEvent("world.tick")
   onWorldTick({ worldId, payload }: WorldTickEventPayload): void {
     this.server.to(worldRoom(worldId)).emit(WS_EVENTS.SERVER_TICK, payload);
@@ -113,6 +129,21 @@ export class GameGateway implements OnGatewayConnection {
   @OnEvent("world.arrival")
   onWorldArrival({ worldId, payload }: WorldArrivalEventPayload): void {
     this.server.to(worldRoom(worldId)).emit(WS_EVENTS.SERVER_ARRIVAL, payload);
+  }
+
+  @OnEvent("world.battle-start")
+  onBattleStart({ worldId, payload }: { worldId: string; payload: unknown }): void {
+    this.server.to(worldRoom(worldId)).emit(WS_EVENTS.SERVER_BATTLE_START, payload);
+  }
+
+  @OnEvent("battle.update")
+  onBattleUpdate({ worldId, payload }: { worldId: string; payload: unknown }): void {
+    this.server.to(worldRoom(worldId)).emit(WS_EVENTS.BATTLE_UPDATE, payload);
+  }
+
+  @OnEvent("battle.end")
+  onBattleEnd({ worldId, payload }: { worldId: string; payload: unknown }): void {
+    this.server.to(worldRoom(worldId)).emit(WS_EVENTS.BATTLE_END, payload);
   }
 
   private requireUser(socket: Socket): string {

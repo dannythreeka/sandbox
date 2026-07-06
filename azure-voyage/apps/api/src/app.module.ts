@@ -8,6 +8,7 @@ import { ResponseInterceptor } from "./common/response/response.interceptor";
 import { ClockModule } from "./modules/clock/clock.module";
 import { GatewayModule } from "./gateway/gateway.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { BattleModule } from "./modules/battle/battle.module";
 import { MarketModule } from "./modules/market/market.module";
 import { OfficerModule } from "./modules/officer/officer.module";
 import { ShipyardModule } from "./modules/shipyard/shipyard.module";
@@ -43,6 +44,7 @@ import { RedisModule } from "./redis/redis.module";
     MarketModule,
     OfficerModule,
     ShipyardModule,
+    BattleModule,
     ClockModule,
     GatewayModule,
   ],
