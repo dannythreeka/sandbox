@@ -9,6 +9,7 @@ COPY apps/api ./apps/api
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @azure-voyage/shared build && pnpm --filter @azure-voyage/api build
 RUN pnpm --filter @azure-voyage/api --prod deploy /out
+RUN cd /out && npx prisma generate
 
 FROM node:22-alpine
 WORKDIR /app
