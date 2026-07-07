@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const WORLD_EVENT_TYPES = ["STORM", "FESTIVAL"] as const;
+export const WORLD_EVENT_TYPES = ["STORM", "FESTIVAL", "RUMOR"] as const;
 export const WorldEventTypeSchema = z.enum(WORLD_EVENT_TYPES);
 
 export const WorldEventViewSchema = z.object({

@@ -23,6 +23,7 @@ export * from "./rules/battle";
 export * from "./rules/exploration";
 export * from "./rules/dominance";
 export * from "./rules/worldgen";
+export * from "./rules/aiFallback";
 
 // schemas & errors
 export * from "./errors";
@@ -34,4 +35,5 @@ export * from "./schemas/officer";
 export * from "./schemas/battle";
 export * from "./schemas/event";
 export * from "./schemas/influence";
+export * from "./schemas/ai";
 export * from "./schemas/ws";

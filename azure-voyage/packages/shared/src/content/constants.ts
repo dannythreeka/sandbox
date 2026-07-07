@@ -102,6 +102,18 @@ export const BALANCE = {
 
   // ── 存檔 ──
   MAX_ACTIVE_WORLDS_PER_USER: 5,
+
+  // ── AI Agent 層（M8 起使用，docs/06）──
+  /** 結構化生成用模型（EVENT_GEN / NPC_STRATEGY） */
+  AI_MODEL_STRUCTURED: "claude-sonnet-5",
+  /** 每個 NPC 商會多久重新生成一次策略目標佇列 */
+  NPC_STRATEGY_INTERVAL_TICKS: 90,
+  /** 每隔幾 tick 嘗試提出一次傳聞事件（RUMOR） */
+  AI_EVENT_INTERVAL_TICKS: 25,
+  /** 每個世界每日 token 預算（input+output 合計），超額當日全走 fallback */
+  AI_DAILY_TOKEN_BUDGET: 250_000,
+  /** 單次生成呼叫預估用量（保守估計，超出實際值也沒關係，只影響配額判斷） */
+  AI_CALL_TOKEN_ESTIMATE: 2_000,
 } as const;
 
 /** 難度乘數（覆蓋 BALANCE 的比例） */
