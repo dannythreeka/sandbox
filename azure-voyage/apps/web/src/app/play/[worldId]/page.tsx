@@ -191,7 +191,19 @@ export default function PlayPage() {
     setError(null);
     try {
       await api.depart(worldId, fleet.id);
-      setFleetDelta((prev) => (prev ? { ...prev, activity: "SAILING", dockedPortId: null } : prev));
+      // 世界剛建立、尚未收到任何 server:tick 時 fleetDelta 仍是 null，
+      // 這裡必須以目前快照補滿欄位，否則樂觀更新會整個變成 no-op，
+      // 玩家會卡在「已出港」但畫面仍顯示停靠中、tick 節奏器也不會啟動。
+      setFleetDelta((prev) => ({
+        id: fleet.id,
+        pos: prev?.pos ?? fleet.pos,
+        food: prev?.food ?? fleet.food,
+        water: prev?.water ?? fleet.water,
+        morale: prev?.morale ?? fleet.morale,
+        ...prev,
+        activity: "SAILING",
+        dockedPortId: null,
+      }));
       setNotice(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "出港失敗");

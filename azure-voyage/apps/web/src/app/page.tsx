@@ -19,7 +19,7 @@ export default function HomePage() {
           登入
         </Link>
       </div>
-      <p className="text-xs text-slate-500">M0 開發預覽版：帳號與存檔管理</p>
+      <p className="text-xs text-slate-500">貿易 · 海戰 · 探索 · 商會外交，一段完整可玩的航海生涯</p>
     </main>
   );
 }
