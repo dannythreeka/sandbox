@@ -9,7 +9,9 @@ async function bootstrap(): Promise<void> {
   );
   app.setGlobalPrefix("api/v1");
   app.enableCors({
-    origin: process.env.WEB_ORIGIN ?? true, // 開發預設全開；正式環境設 WEB_ORIGIN
+    // 開發預設全開；正式環境設 WEB_ORIGIN。空字串（如未設定時被解析成 ""）
+    // 視同未設定，否則 CORS 會把所有來源都擋下。
+    origin: process.env.WEB_ORIGIN || true,
     credentials: true,
   });
   app.enableShutdownHooks();
