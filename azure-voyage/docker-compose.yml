@@ -21,8 +21,14 @@ services:
       - "6379:6379"
     volumes:
       - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
-  # api / web 容器供正式部署用；日常開發用 `pnpm dev`（只起 postgres + redis）
+  # api / web 容器供 docker compose --profile full up --build 一鍵試玩用；
+  # 日常開發用 `pnpm dev`（只起 postgres + redis，程式碼跑在本機、有熱重載）。
   api:
     profiles: ["full"]
     build:
@@ -33,10 +39,16 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me}
       API_PORT: 3001
+      # AI 層（docs/06、M8）：預設關閉，全走規則引擎 fallback，不需要 API key。
+      # 要讓 NPC 策略／世界事件改由 Claude 生成，在根目錄 .env 設定這兩個值。
+      AI_ENABLED: ${AI_ENABLED:-false}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     ports:
       - "3001:3001"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   web:
@@ -44,8 +56,11 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3001
+      args:
+        # 建置期就烘進前端 bundle（Next.js public env 的限制）；本機 docker compose
+        # 玩的話用預設值即可（瀏覽器與 api 都在同一台機器，走 published port）。
+        # 部署到遠端主機時要改成 API 實際對外可連到的網址，並重新 build。
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
     ports:
       - "3000:3000"
     depends_on:

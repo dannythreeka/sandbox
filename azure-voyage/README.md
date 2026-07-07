@@ -42,6 +42,24 @@ pnpm dev                      # 同時啟動 api (:3001) 與 web (:3000)
 
 驗證指令：`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`。
 
+## 用 Docker 一鍵試玩（不動到本機環境）
+
+不想在本機裝 Node / pnpm / PostgreSQL / Redis，只想開個容器玩玩看的話：
+
+```bash
+cp .env.example .env          # 預設值就能玩；要開 AI 就在這裡填 ANTHROPIC_API_KEY 並把 AI_ENABLED 改 true
+docker compose --profile full up --build
+```
+
+等 `api` 印出 `listening on :3001`、`web` 印出 `Ready` 後，打開 http://localhost:3000 即可遊玩。
+Postgres／Redis 資料存在 Docker volume（`azure-voyage_pgdata` / `azure-voyage_redisdata`）裡，不會碰到本機任何東西；`docker compose --profile full down`（要連資料一起清掉再加 `-v`）即可完整移除，不留痕跡。
+
+想再切回本機開發模式（有熱重載），用預設不帶 `--profile full` 的 `docker compose up -d`（只起 postgres + redis）配合 `pnpm dev` 即可，兩種模式的資料庫連線資訊相同，不會互相干擾。
+
+> **關於部署到遠端主機**：`web` 容器把 `NEXT_PUBLIC_API_URL` 烘進前端 build（Next.js 對 client-side 環境變數的限制，容器啟動後才給的環境變數對它沒作用）。本機用預設值 `http://localhost:3001` 沒問題；要放到遠端主機，先在 `.env` 把 `NEXT_PUBLIC_API_URL` 改成 API 對外實際可連到的網址，並視需要設定 `WEB_ORIGIN` 收斂 CORS，然後重新 `docker compose --profile full build web`。
+>
+> **註：這份 docker-compose 設定在本次修改中已對照目前完整程式碼修正過（補上 M8 的 `AI_ENABLED`/`ANTHROPIC_API_KEY`、Redis 健康檢查與啟動順序、`prisma` CLI 缺漏等問題），並額外挖到一個原本會讓 `apps/api` 的容器建置直接失敗的問題：pnpm v10 預設不允許 `pnpm deploy` 部署未設定 `inject-workspace-packages=true` 的 workspace（會丟 `ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE`），已透過新增根目錄 `.npmrc` 修好，並在本機直接跑過一次 `pnpm --filter @azure-voyage/api --prod deploy` 確認輸出（`dist/`、`prisma/`、`node_modules/.bin/prisma`、注入的 `@azure-voyage/shared`）齊全。但受限於目前開發環境的網路政策無法連線到 Docker Hub 拉取基礎映像，所以沒能在這裡實際跑一次 `docker compose up` 把容器建置到底跑完。麻煩您在本機或伺服器上驗證一次；如果跑起來有任何問題，把錯誤訊息貼給我，我可以繼續修。**
+
 ## 如何遊玩
 
 1. **啟航**：建立世界後直接停靠在起始港，艦隊已配好一艘船與兩名航海士。
