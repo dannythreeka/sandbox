@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { BullModule } from "@nestjs/bullmq";
+import { AiModule } from "../ai/ai.module";
 import { BattleModule } from "../battle/battle.module";
 import { EventModule } from "../event/event.module";
 import { InfluenceModule } from "../influence/influence.module";
@@ -24,6 +25,7 @@ import { WORLD_TICK_QUEUE, WorldTickProcessor } from "./world-tick.processor";
     InfluenceModule,
     NpcModule,
     VictoryModule,
+    AiModule,
   ],
   providers: [ClockService, WorldTickProcessor],
   exports: [ClockService],
