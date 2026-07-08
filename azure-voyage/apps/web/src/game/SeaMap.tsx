@@ -12,6 +12,7 @@ import {
   TERRAIN,
   terrainAt,
   type OffsetCoord,
+  type WeatherKind,
   type WindDirection,
 } from "@azure-voyage/shared";
 import { hexCorners, hexToPixel, pixelToHex } from "./hexPixel";
@@ -30,6 +31,17 @@ const TRAIL_SAMPLE_MS = 90;
 /** 單 tick 位移超過此距離視為「非航行的大跳」（戰敗拖回母港等）→ 瞬移不做動畫 */
 const TELEPORT_DIST = 60;
 
+// ── M14 天氣視覺：粒子數量上限常數化，避免無節制成長吃效能 ──
+const SPARKLE_COUNT = 220;
+const WIND_STREAK_COUNT = 36;
+const RAIN_STREAK_COUNT = 60;
+const WEATHER_EFFECTS_KEY = "azure-voyage:weather-effects-off";
+
+function weatherEffectsDisabled(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(WEATHER_EFFECTS_KEY) === "1";
+}
+
 export interface SeaMapProps {
   fleetPos: OffsetCoord;
   /** SAILING 時自動開啟鏡頭跟隨 */
@@ -44,6 +56,11 @@ export interface SeaMapProps {
    * 不套用。SAILING 中船隻本來就在移動，靠移動方向自然轉向，不需要這個。
    */
   previewHeading?: WindDirection | null;
+  /** M14：艦隊目前所在海域的當日風向／天氣，驅動風紋與天氣視覺效果 */
+  windDir?: WindDirection | null;
+  weather?: WeatherKind | null;
+  /** M14：每次遞增即觸發一次「風暴事件實際觸發」的全屏閃光＋震動（與 STORM_BREWING 天氣預兆是兩回事） */
+  stormFlashTrigger?: number;
 }
 
 /** 程式繪製的原創俯視帆船（船首朝 +x，rotation 對齊航向） */
@@ -118,6 +135,9 @@ export function SeaMap({
   onPortClick,
   onSeaClick,
   previewHeading = null,
+  windDir = null,
+  weather = null,
+  stormFlashTrigger = 0,
 }: SeaMapProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
@@ -140,6 +160,39 @@ export function SeaMap({
   onSeaClickRef.current = onSeaClick;
   const visitedRef = useRef(visitedPortIds);
   visitedRef.current = visitedPortIds;
+  const windDirRef = useRef(windDir);
+  windDirRef.current = windDir;
+  const weatherRef = useRef(weather);
+  weatherRef.current = weather;
+  // M14：天氣效果圖層與觸發狀態；粒子位置存在 ref 裡，ticker 內逐幀更新，
+  // 不透過 React state（每幀都 setState 會炸 render）。
+  const sparkleGfxRef = useRef<Graphics | null>(null);
+  const windStreakGfxRef = useRef<Graphics | null>(null);
+  const windStreaksRef = useRef<{ x: number; y: number }[]>([]);
+  const fogGfxRef = useRef<Graphics | null>(null);
+  const stormTintGfxRef = useRef<Graphics | null>(null);
+  const rainGfxRef = useRef<Graphics | null>(null);
+  const rainStreaksRef = useRef<{ x: number; y: number }[]>([]);
+  const lightningUntilRef = useRef(0);
+  const stormFlashGfxRef = useRef<Graphics | null>(null);
+  const stormFlashAtRef = useRef(0);
+  const stormFlashTriggerRef = useRef(stormFlashTrigger);
+
+  const [effectsEnabled, setEffectsEnabled] = useState(true);
+  const effectsEnabledRef = useRef(true);
+  useEffect(() => {
+    const enabled = !weatherEffectsDisabled();
+    effectsEnabledRef.current = enabled;
+    setEffectsEnabled(enabled);
+  }, []);
+  function toggleEffects(): void {
+    const next = !effectsEnabledRef.current;
+    effectsEnabledRef.current = next;
+    setEffectsEnabled(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(WEATHER_EFFECTS_KEY, next ? "0" : "1");
+    }
+  }
 
   const [follow, setFollow] = useState(true);
   function setFollowBoth(v: boolean): void {
@@ -230,6 +283,39 @@ export function SeaMap({
           portVisualsRef.current.set(port.id, { marker, label });
         }
 
+        // ── M14 天氣視覺（世界座標圖層：隨地圖平移縮放）──
+        let mapPixelW = 0;
+        let mapPixelH = 0;
+        for (let row = 0; row < HEXMAP.height; row++) {
+          for (let col = 0; col < HEXMAP.width; col++) {
+            const p = hexToPixel({ col, row });
+            if (p.x > mapPixelW) mapPixelW = p.x;
+            if (p.y > mapPixelH) mapPixelH = p.y;
+          }
+        }
+        // 波光：固定散佈在可航行海面上的小白點，只用整層透明度做「閃爍」動畫
+        // （不逐點動畫、不逐幀重繪座標，效能成本趨近於零）。
+        const sparkleGfx = new Graphics();
+        for (let i = 0; i < SPARKLE_COUNT; i++) {
+          const x = Math.random() * mapPixelW;
+          const y = Math.random() * mapPixelH;
+          const hex = pixelToHex({ x, y });
+          if (!inBounds(HEXMAP, hex) || !isNavigable(terrainAt(HEXMAP, hex))) continue;
+          sparkleGfx.circle(x, y, 0.6).fill(0xdbe7f3);
+        }
+        sparkleGfx.alpha = 0.22;
+        sparkleGfxRef.current = sparkleGfx;
+        world.addChild(sparkleGfx);
+
+        // 風紋：沿當日風向緩慢平移的短弧線（世界座標，跟著地圖一起縮放平移）
+        const windStreakGfx = new Graphics();
+        windStreakGfxRef.current = windStreakGfx;
+        world.addChild(windStreakGfx);
+        windStreaksRef.current = Array.from({ length: WIND_STREAK_COUNT }, () => ({
+          x: Math.random() * mapPixelW,
+          y: Math.random() * mapPixelH,
+        }));
+
         // ── 艦隊（帆船圖形）──
         const ship = buildShipSprite();
         shipRef.current = ship;
@@ -295,6 +381,34 @@ export function SeaMap({
           { passive: false },
         );
 
+        // ── M14 天氣視覺（螢幕座標圖層：蓋在畫面上，不隨地圖平移縮放）──
+        const fogGfx = new Graphics();
+        fogGfx.eventMode = "none";
+        fogGfxRef.current = fogGfx;
+        app.stage.addChild(fogGfx);
+
+        const stormTintGfx = new Graphics();
+        stormTintGfx.eventMode = "none";
+        stormTintGfxRef.current = stormTintGfx;
+        app.stage.addChild(stormTintGfx);
+
+        const rainGfx = new Graphics();
+        rainGfx.eventMode = "none";
+        rainGfxRef.current = rainGfx;
+        app.stage.addChild(rainGfx);
+        rainStreaksRef.current = Array.from({ length: RAIN_STREAK_COUNT }, () => ({
+          x: Math.random() * app.screen.width,
+          y: Math.random() * app.screen.height,
+        }));
+
+        const stormFlashGfx = new Graphics();
+        stormFlashGfx.eventMode = "none";
+        stormFlashGfxRef.current = stormFlashGfx;
+        app.stage.addChild(stormFlashGfx);
+
+        let fogAlpha = 0;
+        let stormTintAlpha = 0;
+
         // ── 主迴圈：船隻內插移動、轉向、航跡、目的地脈動、鏡頭跟隨 ──
         app.ticker.add(() => {
           const dt = app.ticker.deltaMS / 1000;
@@ -359,6 +473,123 @@ export function SeaMap({
               w.position.y += (cy - w.position.y) * kc;
             }
           }
+
+          // ── M14 天氣視覺 ──
+          if (effectsEnabledRef.current) {
+            const weatherNow = weatherRef.current;
+            const wind = windDirRef.current;
+
+            // 波光：緩慢的全域明暗脈動；微風時更亮更活躍（BALANCE.WEATHER_BREEZE_*）
+            const sg = sparkleGfxRef.current;
+            if (sg) {
+              const base = weatherNow === "BREEZE" ? 0.42 : 0.22;
+              sg.alpha = base + 0.12 * Math.sin(now / 900);
+            }
+
+            // 風紋：沿當日風向緩慢平移的短弧線，超出地圖範圍環繞回來——風看得見。
+            const wg = windStreakGfxRef.current;
+            if (wg && wind !== null) {
+              const originPx = hexToPixel({ col: 0, row: 0 });
+              const nextPx = hexToPixel(hexNeighborInDirection({ col: 0, row: 0 }, wind));
+              const dlen = Math.hypot(nextPx.x - originPx.x, nextPx.y - originPx.y) || 1;
+              const ux = (nextPx.x - originPx.x) / dlen;
+              const uy = (nextPx.y - originPx.y) / dlen;
+              const speed = 14;
+              wg.clear();
+              for (const s of windStreaksRef.current) {
+                s.x += ux * speed * dt;
+                s.y += uy * speed * dt;
+                if (s.x < 0) s.x += mapPixelW;
+                if (s.x > mapPixelW) s.x -= mapPixelW;
+                if (s.y < 0) s.y += mapPixelH;
+                if (s.y > mapPixelH) s.y -= mapPixelH;
+                wg.moveTo(s.x - ux * 4, s.y - uy * 4)
+                  .lineTo(s.x, s.y)
+                  .stroke({ width: 0.6, color: 0xbfe8ff, alpha: 0.25 });
+              }
+            }
+
+            // 霧：半透明灰白 overlay（螢幕座標，緩慢淡入淡出避免天氣切換時跳變）
+            const fg = fogGfxRef.current;
+            if (fg) {
+              const targetFog = weatherNow === "FOG" ? 0.32 : 0;
+              fogAlpha += (targetFog - fogAlpha) * Math.min(1, dt * 2);
+              fg.clear();
+              if (fogAlpha > 0.001) {
+                fg.rect(0, 0, app.screen.width, app.screen.height).fill({
+                  color: 0xdbe7f3,
+                  alpha: fogAlpha,
+                });
+              }
+            }
+
+            // 風暴醞釀：色調壓暗 + 斜向雨絲 + 偶發閃光（預兆，不是風暴事件本身）
+            const stg = stormTintGfxRef.current;
+            const rg = rainGfxRef.current;
+            if (stg && rg) {
+              const brewing = weatherNow === "STORM_BREWING";
+              const targetTint = brewing ? 0.3 : 0;
+              stormTintAlpha += (targetTint - stormTintAlpha) * Math.min(1, dt * 2);
+              if (brewing && Math.random() < 0.003) lightningUntilRef.current = now + 120;
+              const flash = now < lightningUntilRef.current ? 0.35 : 0;
+              stg.clear();
+              if (stormTintAlpha > 0.001) {
+                stg.rect(0, 0, app.screen.width, app.screen.height).fill({
+                  color: 0x0b1526,
+                  alpha: stormTintAlpha,
+                });
+              }
+              if (flash > 0) {
+                stg.rect(0, 0, app.screen.width, app.screen.height).fill({
+                  color: 0xffffff,
+                  alpha: flash,
+                });
+              }
+
+              rg.clear();
+              if (brewing) {
+                for (const s of rainStreaksRef.current) {
+                  s.x -= 60 * dt;
+                  s.y += 220 * dt;
+                  if (s.y > app.screen.height) {
+                    s.y -= app.screen.height;
+                    s.x = Math.random() * app.screen.width;
+                  }
+                  if (s.x < 0) s.x += app.screen.width;
+                  rg.moveTo(s.x, s.y)
+                    .lineTo(s.x + 4, s.y - 14)
+                    .stroke({ width: 1, color: 0x9fc3e0, alpha: 0.35 });
+                }
+              }
+            }
+          } else {
+            // 特效關閉：確保殘留的 overlay 不會卡在半透明狀態
+            fogGfxRef.current?.clear();
+            stormTintGfxRef.current?.clear();
+            rainGfxRef.current?.clear();
+            if (sparkleGfxRef.current) sparkleGfxRef.current.alpha = 0;
+            fogAlpha = 0;
+            stormTintAlpha = 0;
+          }
+
+          // 風暴事件實際觸發（server:event）：全屏短促閃白 + 輕微震動，
+          // 與上面「風暴醞釀」天氣預兆是兩回事——這裡不受特效開關影響（重要狀態變化，不是氛圍裝飾）。
+          const sfg = stormFlashGfxRef.current;
+          if (sfg) {
+            const elapsed = now - stormFlashAtRef.current;
+            if (elapsed >= 0 && elapsed < 260) {
+              const t = elapsed / 260;
+              sfg.clear().rect(0, 0, app.screen.width, app.screen.height).fill({
+                color: 0xffffff,
+                alpha: (1 - t) * 0.6,
+              });
+              const shake = (1 - t) * 4;
+              app.stage.position.set((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+            } else if (app.stage.position.x !== 0 || app.stage.position.y !== 0) {
+              sfg.clear();
+              app.stage.position.set(0, 0);
+            }
+          }
         });
       });
 
@@ -388,6 +619,20 @@ export function SeaMap({
   useEffect(() => {
     if (sailing) setFollowBoth(true);
   }, [sailing]);
+
+  // M14：風暴事件實際觸發時（server:event）閃一次白＋震動；跳過掛載當下的初值。
+  const stormFlashMountedRef = useRef(false);
+  useEffect(() => {
+    if (!stormFlashMountedRef.current) {
+      stormFlashMountedRef.current = true;
+      stormFlashTriggerRef.current = stormFlashTrigger;
+      return;
+    }
+    if (stormFlashTrigger !== stormFlashTriggerRef.current) {
+      stormFlashTriggerRef.current = stormFlashTrigger;
+      stormFlashAtRef.current = performance.now();
+    }
+  }, [stormFlashTrigger]);
 
   // 港口標記／標籤隨造訪狀態更新
   useEffect(() => {
@@ -436,6 +681,13 @@ export function SeaMap({
         onClick={() => setFollowBoth(!followRef.current)}
       >
         {follow ? "鏡頭跟隨中" : "回到艦隊"}
+      </button>
+      <button
+        className="absolute left-2 top-2 rounded bg-slate-800/85 px-2 py-1 text-xs text-slate-200 hover:bg-slate-700/85"
+        onClick={toggleEffects}
+        title="關閉／開啟波光、風紋、霧、風暴等天氣視覺效果"
+      >
+        {effectsEnabled ? "天氣特效：開" : "天氣特效：關"}
       </button>
       <span className="pointer-events-none absolute bottom-2 left-2 rounded bg-slate-900/70 px-2 py-1 text-xs text-slate-300">
         點港口或海面設定航向 · 拖曳平移 · 滾輪縮放

@@ -8,7 +8,10 @@ import {
   explorationSuccessChance,
   offsetDistance,
   portById,
+  regionForCoord,
   Rng,
+  weatherAtTick,
+  weatherExplorationMult,
   type DiscoveryRecordView,
   type ExploreResult,
   type RegisterDiscoveryResult,
@@ -54,7 +57,10 @@ export class DiscoveryService {
         const stats = o.stats as { lore: number };
         return Math.max(max, stats.lore);
       }, 10);
-      const chance = explorationSuccessChance(bestLore, target.requiredLore);
+      // M14：起霧降低探索成功率（同一套天氣管線，與遭遇率加成互為對照）。
+      const region = regionForCoord(pos);
+      const weather = weatherAtTick(region.id, world.currentTick, world.seed);
+      const chance = explorationSuccessChance(bestLore, target.requiredLore) * weatherExplorationMult(weather);
       const rng = new Rng(
         deriveSeed(world.seed, world.currentTick, hashId(fleetId), hashId(target.id)),
       );

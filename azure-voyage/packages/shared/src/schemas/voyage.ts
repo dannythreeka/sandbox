@@ -53,6 +53,8 @@ export const FleetTickDeltaSchema = z.object({
     .optional(),
   /** M12：手動操舵模式的當前航向；null／缺席＝自動尋路或無方向（optional 向後相容） */
   heading: z.number().int().min(0).max(5).nullable().optional(),
+  /** M14：所在海域當日天氣（optional 向後相容） */
+  weather: z.enum(["CLEAR", "BREEZE", "FOG", "STORM_BREWING"]).optional(),
 });
 export type FleetTickDelta = z.infer<typeof FleetTickDeltaSchema>;
 

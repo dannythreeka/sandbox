@@ -4,7 +4,7 @@
  * 前後端可各自計算、斷線重連一致、可單測。
  */
 import { BALANCE } from "../content/constants";
-import { REGIONS, SEASONS, type RegionDef, type Season, type WindDirection } from "../content/regions";
+import { REGIONS, SEASONS, type Season, type WindDirection } from "../content/regions";
 import { axialToOddr, oddrToAxial, type OffsetCoord } from "./hex";
 import { inBounds, isNavigable, terrainAt, type HexMap } from "./hexmap";
 import { deriveSeed, Rng } from "./rng";
@@ -14,34 +14,8 @@ export function seasonAtTick(tick: number): Season {
   return SEASONS[Math.floor(tick / BALANCE.SEASON_TICKS) % SEASONS.length];
 }
 
-/**
- * 座標 → 所屬海域。以 bounds 查找；多個命中取定義順序第一個；
- * 皆未命中（地圖邊角縫隙防呆）取 bounds 中心距離最近者。
- */
-export function regionAt(coord: OffsetCoord): RegionDef {
-  for (const region of REGIONS) {
-    const b = region.bounds;
-    if (coord.col >= b.colMin && coord.col <= b.colMax && coord.row >= b.rowMin && coord.row <= b.rowMax) {
-      return region;
-    }
-  }
-  let best = REGIONS[0];
-  let bestD = Infinity;
-  for (const region of REGIONS) {
-    const b = region.bounds;
-    const cx = (b.colMin + b.colMax) / 2;
-    const cy = (b.rowMin + b.rowMax) / 2;
-    const d = (coord.col - cx) ** 2 + (coord.row - cy) ** 2;
-    if (d < bestD) {
-      bestD = d;
-      best = region;
-    }
-  }
-  return best;
-}
-
-/** regionId → 穩定整數（windAtTick 的 rng stream 用；FNV-1a 簡化版） */
-function hashRegionId(regionId: string): number {
+/** regionId → 穩定整數（windAtTick/weatherAtTick 的 rng stream 用；FNV-1a 簡化版） */
+export function hashRegionId(regionId: string): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < regionId.length; i++) {
     h ^= regionId.charCodeAt(i);

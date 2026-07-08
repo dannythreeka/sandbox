@@ -7,7 +7,6 @@ import {
   firstNavigableHeading,
   hexDirectionBetween,
   hexNeighborInDirection,
-  regionAt,
   seasonAtTick,
   windAngleGap,
   windAtTick,
@@ -28,30 +27,6 @@ describe("seasonAtTick", () => {
     expect(seasonAtTick(3 * S)).toBe("WINTER");
     expect(seasonAtTick(4 * S)).toBe("SPRING"); // 跨年回春
     expect(seasonAtTick(4 * S - 1)).toBe("WINTER");
-  });
-});
-
-describe("regionAt", () => {
-  it("resolves a coord inside a region's bounds to that region", () => {
-    for (const region of REGIONS) {
-      const b = region.bounds;
-      const inside = {
-        col: Math.floor((b.colMin + b.colMax) / 2),
-        row: Math.floor((b.rowMin + b.rowMax) / 2),
-      };
-      // 中心點可能落在定義順序更早、範圍重疊的海域；至少必須命中「某個」包含它的海域
-      const got = regionAt(inside);
-      const gb = got.bounds;
-      expect(
-        inside.col >= gb.colMin && inside.col <= gb.colMax &&
-        inside.row >= gb.rowMin && inside.row <= gb.rowMax,
-      ).toBe(true);
-    }
-  });
-
-  it("falls back to the nearest region for out-of-bounds coords", () => {
-    expect(() => regionAt({ col: -50, row: -50 })).not.toThrow();
-    expect(regionAt({ col: -50, row: -50 })).toBeDefined();
   });
 });
 

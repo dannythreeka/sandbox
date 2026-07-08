@@ -11,8 +11,9 @@ import {
   firstNavigableHeading,
   HEXMAP,
   portById,
-  regionAt,
+  regionForCoord,
   seasonAtTick,
+  weatherAtTick,
   windAtTick,
   WS_EVENTS,
   type Season,
@@ -78,6 +79,13 @@ const WIND_GAP_LABELS = [
   { text: "側風", cls: "text-slate-300" },
   { text: "逆風", cls: "text-red-400" },
 ] as const;
+/** M14：天氣標籤與顏色 */
+const WEATHER_LABELS: Record<string, { text: string; cls: string }> = {
+  CLEAR: { text: "晴朗", cls: "text-slate-300" },
+  BREEZE: { text: "微風", cls: "text-emerald-300" },
+  FOG: { text: "起霧", cls: "text-slate-400" },
+  STORM_BREWING: { text: "風暴醞釀", cls: "text-red-400" },
+};
 
 export default function PlayPage() {
   const params = useParams<{ worldId: string }>();
@@ -101,6 +109,8 @@ export default function PlayPage() {
   const [battleLog, setBattleLog] = useState<string[]>([]);
   const [victory, setVictory] = useState<ServerVictoryPayload | null>(null);
   const [cutscene, setCutscene] = useState<CutsceneState | null>(null);
+  // M14：每次遞增觸發一次海圖的全屏閃光＋震動（風暴事件實際觸發時）
+  const [stormFlashTrigger, setStormFlashTrigger] = useState(0);
   const socketRef = useRef<Socket | null>(null);
   const tickRef = useRef<number>(0);
   const inFlightRef = useRef(false);
@@ -180,6 +190,10 @@ export default function PlayPage() {
       if (!payload.fleetId || payload.fleetId === playerFleetIdRef.current) {
         tripEventCountRef.current += 1;
       }
+      // M14：風暴事件實際觸發（與「風暴醞釀」天氣預兆不同）在海圖上閃光＋震動一次
+      if (payload.event.type === "STORM") {
+        setStormFlashTrigger((n) => n + 1);
+      }
       setNotice(payload.event.narrative);
       api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
     });
@@ -240,7 +254,7 @@ export default function PlayPage() {
   // ── M11 風向 HUD：航行中用伺服器 delta（含對航向的修正）；停靠/下錨時
   // 前端以同一套 shared 純函式自算當日風向（world seed 確定性，兩端必一致）──
   const currentTick = tick ?? snapshot?.world.currentTick ?? 0;
-  const region = fleetOffsetPos ? regionAt(fleetOffsetPos) : null;
+  const region = fleetOffsetPos ? regionForCoord(fleetOffsetPos) : null;
   const windDir =
     fleetDelta?.wind?.dir ??
     (region && snapshot ? windAtTick(region.id, currentTick, snapshot.world.seed) : null);
@@ -248,6 +262,10 @@ export default function PlayPage() {
     activity === "SAILING" && fleetDelta?.wind
       ? ([...BALANCE.WIND_MODIFIERS] as number[]).indexOf(fleetDelta.wind.modifier)
       : -1;
+  // M14：天氣同一套「航行中用伺服器 delta、停靠時前端自算」的模式
+  const weather =
+    fleetDelta?.weather ??
+    (region && snapshot ? weatherAtTick(region.id, currentTick, snapshot.world.seed) : null);
   // M12：手動操舵航向——伺服器一旦回報（含 SAILING 中或 DOCKED/ANCHORED 已選定）即為準；
   // 否則落回本地尚待確認的樂觀值
   const displayedHeading = fleetDelta?.heading ?? pendingHeading ?? null;
@@ -581,6 +599,11 @@ export default function PlayPage() {
                       {WIND_GAP_LABELS[windGapIdx].text}
                     </span>
                   )}
+                  {weather && (
+                    <span className={WEATHER_LABELS[weather].cls}>
+                      · {WEATHER_LABELS[weather].text}
+                    </span>
+                  )}
                 </span>
               )}
               <span>糧 {food}</span>
@@ -610,6 +633,9 @@ export default function PlayPage() {
             }
             onPortClick={(portId) => void handleMapTarget({ targetPortId: portId })}
             onSeaClick={(coord) => void handleMapTarget({ target: coord })}
+            windDir={windDir as 0 | 1 | 2 | 3 | 4 | 5 | null}
+            weather={weather}
+            stormFlashTrigger={stormFlashTrigger}
           />
 
           <section className="panel flex flex-wrap items-center gap-4">

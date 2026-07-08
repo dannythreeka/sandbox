@@ -8,6 +8,8 @@ import {
   regionForCoord,
   Rng,
   shipClassById,
+  weatherAtTick,
+  weatherStormEventMult,
   type ServerEventPayload,
 } from "@azure-voyage/shared";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -33,7 +35,9 @@ export class EventService {
     for (const fleet of sailingFleets) {
       const rng = new Rng(deriveSeed(world.seed, tick, hashId(fleet.id), 0x5701));
       const region = regionForCoord(axialToOddr({ q: fleet.posQ, r: fleet.posR }));
-      const chance = region.danger * BALANCE.STORM_CHANCE_PER_DANGER;
+      // M14：風暴醞釀天氣是預兆，實際觸發仍是這裡的獨立擲骰，只是機率加乘。
+      const weather = weatherAtTick(region.id, tick, world.seed);
+      const chance = region.danger * BALANCE.STORM_CHANCE_PER_DANGER * weatherStormEventMult(weather);
       if (!rng.chance(chance)) continue;
 
       for (const ship of fleet.ships) {

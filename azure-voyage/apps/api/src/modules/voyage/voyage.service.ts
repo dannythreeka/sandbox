@@ -15,12 +15,14 @@ import {
   portAtCoord,
   portById,
   PORTS,
-  regionAt,
+  regionForCoord,
   RouteViewSchema,
   shipClassById,
   stepAlongRoute,
   stepManualHeading,
   TERRAIN,
+  weatherAtTick,
+  weatherSpeedMult,
   windAtTick,
   windModifierFor,
   type FleetTickDelta,
@@ -225,7 +227,7 @@ export class VoyageService {
       // 手動操舵的固定 heading）的修正；未消耗預算跨 tick 進位（speedCarry），
       // 確保逆風慢船也永不凍結——carry 上限取 max(基礎船速, 暗礁成本)。
       const currentPos = axialToOddr({ q: fleet.posQ, r: fleet.posR });
-      const region = regionAt(currentPos);
+      const region = regionForCoord(currentPos);
       const wind = windAtTick(region.id, newTick, world.seed);
       const windMod = hasRoute
         ? (() => {
@@ -236,7 +238,9 @@ export class VoyageService {
             return segDir === null ? 1 : windModifierFor(segDir, wind);
           })()
         : windModifierFor(heading!, wind);
-      const budget = baseSpeed * windMod + fleet.speedCarry;
+      // M14：每日天氣（同一套確定性管線）；BREEZE 疊加航速加成，其餘天氣不影響移動。
+      const weather = weatherAtTick(region.id, newTick, world.seed);
+      const budget = baseSpeed * windMod * weatherSpeedMult(weather) + fleet.speedCarry;
 
       // M12：route 模式沿 waypoints 推進；手動操舵模式沿固定 heading 直線推進，
       // 前方陸地時停下並回報 blockedByLand，交由下方轉為 ANCHORED（不做繞行）。
@@ -316,6 +320,7 @@ export class VoyageService {
         morale: supplies.morale,
         wind: { dir: wind, modifier: windMod },
         heading: headingOut,
+        weather,
       });
     }
 
