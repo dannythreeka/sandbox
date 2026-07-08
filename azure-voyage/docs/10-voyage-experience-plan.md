@@ -5,11 +5,17 @@
 > 原則沿用 docs/09：每個里程碑一個 PR、結束時遊戲可運行可驗證、`AI_ENABLED=false` 全程可玩、
 > 所有美術一律程式繪製原創圖形（禁用任何既有遊戲素材）、規則計算放 `packages/shared/src/rules/` 純函式＋單測。
 
-> **執行記錄**：M11、M12 已完成，設計與下方規格一致，僅一處實務調整——M12
-> 的預設出港航向改由前端在「玩家第一次按 ↑ 卻從未操舵過」時即時挑選
-> （`firstNavigableHeading`），而非在 depart() 內硬性要求；`setHeading`
-> 統一支援 DOCKED/SAILING/ANCHORED 三種狀態（與 `setRoute` 對稱），讓「方向鍵
-> 預先瞄準再出港」與「航行中隨時轉舵」共用同一支端點。
+> **執行記錄**：M11、M12、M13 已完成，設計與下方規格大致一致，實務調整：
+> - M12：預設出港航向改由前端在「玩家第一次按 ↑ 卻從未操舵過」時即時挑選
+>   （`firstNavigableHeading`），而非在 depart() 內硬性要求；`setHeading`
+>   統一支援 DOCKED/SAILING/ANCHORED 三種狀態（與 `setRoute` 對稱），讓「方向鍵
+>   預先瞄準再出港」與「航行中隨時轉舵」共用同一支端點。
+> - M13：剪影生成器改放 `packages/shared/src/rules/portSilhouette.ts`（而非文件原
+>   訂的 `apps/web/src/game/`）——`apps/web` 目前沒有配置任何單元測試執行器，放
+>   shared 才能真的用既有 vitest 基建寫「同 portId 同輸出」的確定性測試，也更符合
+>   docs/09 既定原則（純計算歸 shared）。「鏡頭 zoom」簡化為過場 overlay 全螢幕蓋
+>   住地圖再退場，而非真的操縱 SeaMap 的 Pixi 相機——效果等價（畫面轉場到港景再
+>   轉回），但不需要幫 SeaMap 開一支新的命令式 API，耦合小很多。
 
 ## 總覽與依賴順序
 

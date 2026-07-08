@@ -17,6 +17,7 @@ export * from "./rules/hexmap";
 export * from "./rules/pathfind";
 export * from "./rules/movement";
 export * from "./rules/wind";
+export * from "./rules/portSilhouette";
 export * from "./rules/supplies";
 export * from "./rules/pricing";
 export * from "./rules/influence";
