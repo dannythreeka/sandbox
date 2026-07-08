@@ -41,6 +41,17 @@ import { BattleScene } from "@/game/BattleScene";
 import { ExplorationPanel } from "@/game/ExplorationPanel";
 import { DiscoveryPanel } from "@/game/DiscoveryPanel";
 import { InfluencePanel } from "@/game/InfluencePanel";
+import { PortCutscene, type CutsceneState } from "@/game/PortCutscene";
+
+/** M13：使用者選過「不再顯示這個動畫」後永久跳過過場（不影響其他玩家/裝置） */
+const CUTSCENE_SKIP_KEY = "azure-voyage:skip-cutscenes";
+function cutscenesSkipped(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(CUTSCENE_SKIP_KEY) === "1";
+}
+function skipCutscenesForever(): void {
+  window.localStorage.setItem(CUTSCENE_SKIP_KEY, "1");
+}
 
 type WsState = "connecting" | "joined" | "disconnected";
 
@@ -89,6 +100,7 @@ export default function PlayPage() {
   const [battleState, setBattleState] = useState<BattleStateView | null>(null);
   const [battleLog, setBattleLog] = useState<string[]>([]);
   const [victory, setVictory] = useState<ServerVictoryPayload | null>(null);
+  const [cutscene, setCutscene] = useState<CutsceneState | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const tickRef = useRef<number>(0);
   const inFlightRef = useRef(false);
@@ -96,6 +108,11 @@ export default function PlayPage() {
   // tick delta 依艦隊 id 過濾（不能拿 fleets[0]：清單只含「該 tick 有航行」的艦隊，
   // 順序與歸屬都不保證是玩家自己的）
   const playerFleetIdRef = useRef<string | null>(null);
+  // M13：WS handler 註冊在只跑一次的 effect 裡，讀 state 會拿到掛載當下的
+  // 舊值（stale closure）；用 ref 讓 server:arrival 算航程摘要時能拿到最新艦隊資料。
+  const latestFleetRef = useRef<FleetTickDelta | null>(null);
+  const tripStartRef = useRef<{ tick: number; food: number; water: number } | null>(null);
+  const tripEventCountRef = useRef(0);
 
   useEffect(() => {
     if (!getAccessToken()) {
@@ -131,6 +148,7 @@ export default function PlayPage() {
         : payload.fleets[0];
       if (mine) {
         setFleetDelta(mine);
+        latestFleetRef.current = mine;
         if (mine.activity === "DOCKED" || mine.activity === "ANCHORED") setRoute(null);
       }
       if (payload.notices.length > 0) setNotice(payload.notices.join(" "));
@@ -139,10 +157,29 @@ export default function PlayPage() {
     });
     socket.on(WS_EVENTS.SERVER_ARRIVAL, (payload: ServerArrivalPayload) => {
       if (playerFleetIdRef.current && payload.fleetId !== playerFleetIdRef.current) return;
-      setNotice(`艦隊已抵達 ${portById(payload.portId).name}`);
+      // M13：入港過場的航程摘要——自出港以來累計，後端無感知
+      const start = tripStartRef.current;
+      const nowFood = latestFleetRef.current?.food ?? start?.food ?? 0;
+      const nowWater = latestFleetRef.current?.water ?? start?.water ?? 0;
+      const summary = {
+        days: start ? payload.tick - start.tick : 0,
+        food: start ? Math.max(0, start.food - nowFood) : 0,
+        water: start ? Math.max(0, start.water - nowWater) : 0,
+        events: tripEventCountRef.current,
+      };
+      tripStartRef.current = null;
+      tripEventCountRef.current = 0;
+      if (cutscenesSkipped()) {
+        setNotice(`艦隊已抵達 ${portById(payload.portId).name}`);
+      } else {
+        setCutscene({ kind: "arrival", portId: payload.portId, day: payload.tick, summary });
+      }
       api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
     });
     socket.on(WS_EVENTS.SERVER_EVENT, (payload: ServerEventPayload) => {
+      if (!payload.fleetId || payload.fleetId === playerFleetIdRef.current) {
+        tripEventCountRef.current += 1;
+      }
       setNotice(payload.event.narrative);
       api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
     });
@@ -222,16 +259,25 @@ export default function PlayPage() {
   const gameEnded = victory !== null || (snapshot ? snapshot.world.status !== "ACTIVE" : false);
 
   // ── 節奏器：SAILING 時依速度檔每隔 N ms 送出 client:advance ──
+  // M13：過場動畫期間暫停（與「暫停」檔語意一致，無資料面副作用）。
   useEffect(() => {
     const intervalMs = SPEED_PRESETS[speedIdx].intervalMs;
-    if (activity !== "SAILING" || intervalMs === 0 || battleId !== null || victory !== null) return;
+    if (
+      activity !== "SAILING" ||
+      intervalMs === 0 ||
+      battleId !== null ||
+      victory !== null ||
+      cutscene !== null
+    ) {
+      return;
+    }
     const timer = setInterval(() => {
       if (inFlightRef.current) return;
       inFlightRef.current = true;
       socketRef.current?.emit(WS_EVENTS.CLIENT_ADVANCE, { worldId, ticks: 1 });
     }, intervalMs);
     return () => clearInterval(timer);
-  }, [activity, speedIdx, worldId, battleId, victory]);
+  }, [activity, speedIdx, worldId, battleId, victory, cutscene]);
 
   /**
    * 樂觀更新艦隊活動狀態。世界剛建立、尚未收到任何 server:tick 時 fleetDelta
@@ -303,11 +349,14 @@ export default function PlayPage() {
     setError(null);
     try {
       if ((await ensureCourseChosen()) === "failed") return;
+      const departingPortId = currentPort?.portId;
       const r = await api.depart(worldId, fleet.id);
-      seedFleetActivity("SAILING", {
-        food: fleet.food + r.resupplied.food,
-        water: fleet.water + r.resupplied.water,
-      });
+      const foodAfter = fleet.food + r.resupplied.food;
+      const waterAfter = fleet.water + r.resupplied.water;
+      // M13：出港過場的航程摘要起點——後端無感知，純前端累計
+      tripStartRef.current = { tick: currentTick, food: foodAfter, water: waterAfter };
+      tripEventCountRef.current = 0;
+      seedFleetActivity("SAILING", { food: foodAfter, water: waterAfter });
       setNotice(
         r.resupplied.cost > 0
           ? `出港前完成補給：糧 +${r.resupplied.food}、水 +${r.resupplied.water}，花費 ${r.resupplied.cost} 金。`
@@ -315,6 +364,9 @@ export default function PlayPage() {
       );
       // 更新商會資金顯示
       api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
+      if (departingPortId && !cutscenesSkipped()) {
+        setCutscene({ kind: "depart", portId: departingPortId, day: currentTick });
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "出港失敗");
     }
@@ -372,10 +424,30 @@ export default function PlayPage() {
     socketRef.current?.emit(WS_EVENTS.CLIENT_STEER, { worldId, fleetId: fleet.id, heading: next });
   }
 
+  /** M13：過場結束（逾時／ESC／點擊跳過皆走這裡）。 */
+  function handleCutsceneDone() {
+    setCutscene(null);
+  }
+  /** M13：「不再顯示這個動畫」——存 localStorage 並立即跳過當次。 */
+  function handleCutsceneSkipForever() {
+    skipCutscenesForever();
+    setCutscene(null);
+  }
+
   // M12 鍵盤操舵：監聽器只掛載一次，透過 ref 讀最新的 handler 閉包，
   // 避免每次 render（尤其航行中每個 tick 都會 render）都重新綁定 window 監聽器。
-  const keyHandlersRef = useRef({ rotateHeading, handleThrottleUp, handleAnchorKey });
-  keyHandlersRef.current = { rotateHeading, handleThrottleUp, handleAnchorKey };
+  const keyHandlersRef = useRef({
+    rotateHeading,
+    handleThrottleUp,
+    handleAnchorKey,
+    cutsceneActive: cutscene !== null,
+  });
+  keyHandlersRef.current = {
+    rotateHeading,
+    handleThrottleUp,
+    handleAnchorKey,
+    cutsceneActive: cutscene !== null,
+  };
 
   useEffect(() => {
     function isTypingTarget(target: EventTarget | null): boolean {
@@ -390,6 +462,9 @@ export default function PlayPage() {
     function onKeyDown(e: KeyboardEvent) {
       if (isTypingTarget(e.target)) return;
       const h = keyHandlersRef.current;
+      // M13：過場動畫中吃掉所有遊戲操作鍵，避免同時操舵；ESC 跳過由
+      // PortCutscene 自己的監聽器處理（過場元件掛載時才存在，職責單純）。
+      if (h.cutsceneActive) return;
       switch (e.key) {
         case "ArrowLeft":
         case "a":
@@ -663,6 +738,14 @@ export default function PlayPage() {
           battleId={battleId}
           state={battleState}
           log={battleLog}
+        />
+      )}
+
+      {cutscene && (
+        <PortCutscene
+          state={cutscene}
+          onDone={handleCutsceneDone}
+          onSkipForever={handleCutsceneSkipForever}
         />
       )}
     </main>

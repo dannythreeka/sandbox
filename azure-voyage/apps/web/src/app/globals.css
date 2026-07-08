@@ -25,3 +25,61 @@ body {
 .label {
   @apply mb-1 block text-sm text-foam;
 }
+
+/* 港口進出過場（docs/10 §M13）：純 CSS 動畫，無任何美術資產 */
+@keyframes cutscene-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cutscene-ship-depart {
+  from {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(70vw) scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes cutscene-ship-arrive {
+  from {
+    transform: translateX(-70vw) scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes cutscene-gull {
+  from {
+    transform: translateX(-10vw);
+  }
+  to {
+    transform: translateX(110vw);
+  }
+}
+
+.cutscene-overlay {
+  animation: cutscene-fade-in 400ms ease-out;
+}
+
+.cutscene-ship-depart {
+  animation: cutscene-ship-depart 1800ms ease-in forwards;
+  animation-delay: 500ms;
+}
+
+.cutscene-ship-arrive {
+  animation: cutscene-ship-arrive 1500ms ease-out forwards;
+}
+
+.cutscene-gull {
+  animation: cutscene-gull 3.2s linear infinite;
+}
