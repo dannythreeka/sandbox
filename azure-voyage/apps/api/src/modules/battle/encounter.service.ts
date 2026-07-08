@@ -10,6 +10,8 @@ import {
   Rng,
   shipClassById,
   unitFromShip,
+  weatherAtTick,
+  weatherEncounterMult,
   type BattleUnit,
 } from "@azure-voyage/shared";
 import { Prisma } from "@prisma/client";
@@ -39,7 +41,9 @@ export class EncounterService {
     for (const fleet of sailingFleets) {
       const rng = new Rng(deriveSeed(world.seed, tick, hashId(fleet.id)));
       const region = regionForCoord(axialToOddr({ q: fleet.posQ, r: fleet.posR }));
-      const chance = region.danger * BALANCE.ENCOUNTER_CHANCE_PER_DANGER;
+      // M14：起霧提高遭遇率（天氣本身用獨立的擲骰流，不影響這裡的遭遇判定）。
+      const weather = weatherAtTick(region.id, tick, world.seed);
+      const chance = region.danger * BALANCE.ENCOUNTER_CHANCE_PER_DANGER * weatherEncounterMult(weather);
       if (!rng.chance(chance)) continue;
 
       const playerUnits: BattleUnit[] = fleet.ships.map((ship, i) =>

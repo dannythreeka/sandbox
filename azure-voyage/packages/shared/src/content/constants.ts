@@ -60,6 +60,21 @@ export const BALANCE = {
   WIND_JITTER_MAIN: 0.6,
   WIND_JITTER_ADJACENT: 0.15,
 
+  // ── 每日天氣（M14 起使用，docs/10 §M14）──
+  /** 風暴醞釀機率 = base + 海域 danger × factor（danger 0.1→4%、0.5→12%） */
+  WEATHER_STORM_BASE: 0.02,
+  WEATHER_STORM_DANGER_FACTOR: 0.2,
+  /** 起霧機率（固定，不隨危險度變化） */
+  WEATHER_FOG_PROB: 0.15,
+  /** 微風機率（固定） */
+  WEATHER_BREEZE_PROB: 0.2,
+  /** 微風天氣的航速加成 */
+  WEATHER_BREEZE_SPEED_MULT: 1.05,
+  /** 起霧對遭遇率的加成／對探索成功率的減損（同一係數，正負號依場景而定） */
+  WEATHER_FOG_MODIFIER: 0.1,
+  /** 風暴醞釀對風暴事件機率的加乘 */
+  WEATHER_STORM_EVENT_MULT: 2.0,
+
   // ── 航海士（M4 起使用，docs/01 §4.5）──
   /** 每 30 tick 結算一次薪資 */
   SALARY_INTERVAL_TICKS: 30,

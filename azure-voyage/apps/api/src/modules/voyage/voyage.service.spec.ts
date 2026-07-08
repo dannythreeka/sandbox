@@ -270,6 +270,21 @@ describe("VoyageService.advanceOneTick", () => {
     expect([...BALANCE.WIND_MODIFIERS]).toContain(mine.wind!.modifier);
   });
 
+  it("reports the daily weather in each sailing fleet's tick delta (M14)", async () => {
+    const fleet = makeFleet();
+    const { prisma } = makePrismaMock({ fleet });
+    const { events } = makeEventsMock();
+    const service = new VoyageService(prisma, events);
+    await service.setRoute("u1", "w1", "f1", { targetPortId: NORTH_PORT_ID });
+    await service.depart("u1", "w1", "f1");
+
+    const result = await service.advanceOneTick("w1");
+    const mine = result.fleets.find((f) => f.id === "f1")!;
+
+    expect(mine.weather).toBeDefined();
+    expect(["CLEAR", "BREEZE", "FOG", "STORM_BREWING"]).toContain(mine.weather);
+  });
+
   it("keeps speedCarry finite and bounded across many ticks (M11)", async () => {
     const fleet = makeFleet();
     const { prisma } = makePrismaMock({ fleet });
