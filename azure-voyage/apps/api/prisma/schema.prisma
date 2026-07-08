@@ -110,6 +110,7 @@ model Fleet {
   water        Int           @default(0)
   morale       Int           @default(70)
   speedCarry   Float         @default(0) // M11：未消耗移動預算跨 tick 進位（逆風/暗礁防凍結）
+  heading      Int? // M12：手動操舵航向（0–5）；與 route 互斥，null＝自動尋路模式或無方向
 
   ships    Ship[]
   officers Officer[]

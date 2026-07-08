@@ -8,6 +8,8 @@ import {
   axialToOddr,
   BALANCE,
   ERROR_MESSAGES_ZH_TW,
+  firstNavigableHeading,
+  HEXMAP,
   portById,
   regionAt,
   seasonAtTick,
@@ -76,6 +78,10 @@ export default function PlayPage() {
   const [tick, setTick] = useState<number | null>(null);
   const [fleetDelta, setFleetDelta] = useState<FleetTickDelta | null>(null);
   const [route, setRoute] = useState<RouteView | null>(null);
+  // M12：DOCKED/ANCHORED 時尚未送達伺服器 tick 前的本地「瞄準」航向
+  // （伺服器回報的 fleetDelta.heading 一旦出現即為準；這裡只補伺服器尚未
+  // 確認前的樂觀顯示，且入港時重置，避免殘留上一段航程的方向）
+  const [pendingHeading, setPendingHeading] = useState<number | null>(null);
   const [speedIdx, setSpeedIdx] = useState(1);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +92,7 @@ export default function PlayPage() {
   const socketRef = useRef<Socket | null>(null);
   const tickRef = useRef<number>(0);
   const inFlightRef = useRef(false);
+  const lastSteerAtRef = useRef(0);
   // tick delta 依艦隊 id 過濾（不能拿 fleets[0]：清單只含「該 tick 有航行」的艦隊，
   // 順序與歸屬都不保證是玩家自己的）
   const playerFleetIdRef = useRef<string | null>(null);
@@ -204,6 +211,13 @@ export default function PlayPage() {
     activity === "SAILING" && fleetDelta?.wind
       ? ([...BALANCE.WIND_MODIFIERS] as number[]).indexOf(fleetDelta.wind.modifier)
       : -1;
+  // M12：手動操舵航向——伺服器一旦回報（含 SAILING 中或 DOCKED/ANCHORED 已選定）即為準；
+  // 否則落回本地尚待確認的樂觀值
+  const displayedHeading = fleetDelta?.heading ?? pendingHeading ?? null;
+  // 入港後重置本地瞄準值，避免殘留上一段航程的方向
+  useEffect(() => {
+    if (activity === "DOCKED") setPendingHeading(null);
+  }, [activity]);
   // 重新整理頁面時若世界早已結束（例如先前已達成勝利），仍要顯示終局畫面
   const gameEnded = victory !== null || (snapshot ? snapshot.world.status !== "ACTIVE" : false);
 
@@ -249,6 +263,7 @@ export default function PlayPage() {
     try {
       const r = await api.setRoute(worldId, fleet.id, dest);
       setRoute(r);
+      setPendingHeading(null); // 互斥：改走自動尋路即清掉本地手動航向顯示
       if (activity === "ANCHORED") {
         seedFleetActivity("SAILING");
         setNotice(null);
@@ -258,10 +273,36 @@ export default function PlayPage() {
     }
   }
 
+  /**
+   * M12：確保出港/收錨前已有航線或航向可用——若兩者皆無（玩家從未點過地圖
+   * 也沒按過方向鍵），挑一個當前位置的預設可航行方位並等伺服器確認
+   * （emitWithAck：後續動作依賴這個航向已寫入，不能用 fire-and-forget）。
+   * 回傳 "already"＝沿用既有航線/航向；"set-now"＝剛用預設值收錨續航
+   * （setHeading 在 ANCHORED 時會原子收錨，呼叫端不必再另外收錨）；
+   * "failed"＝附近沒有可航行方位（理論上不會發生，港口必臨海）。
+   */
+  async function ensureCourseChosen(): Promise<"already" | "set-now" | "failed"> {
+    if (!fleet) return "failed";
+    if (route || (displayedHeading !== null && displayedHeading !== undefined)) return "already";
+    const def = fleetOffsetPos ? firstNavigableHeading(HEXMAP, fleetOffsetPos) : null;
+    if (def === null) {
+      setError("附近沒有可航行的海域");
+      return "failed";
+    }
+    await socketRef.current?.emitWithAck(WS_EVENTS.CLIENT_STEER, {
+      worldId,
+      fleetId: fleet.id,
+      heading: def,
+    });
+    setPendingHeading(def);
+    return "set-now";
+  }
+
   async function handleDepart() {
     if (!fleet) return;
     setError(null);
     try {
+      if ((await ensureCourseChosen()) === "failed") return;
       const r = await api.depart(worldId, fleet.id);
       seedFleetActivity("SAILING", {
         food: fleet.food + r.resupplied.food,
@@ -278,6 +319,117 @@ export default function PlayPage() {
       setError(err instanceof ApiError ? err.message : "出港失敗");
     }
   }
+
+  /** ↑/W（下錨中）：收錨續航，需要有航線或航向。 */
+  async function handleResumeSailing() {
+    if (!fleet) return;
+    setError(null);
+    try {
+      const outcome = await ensureCourseChosen();
+      if (outcome === "failed") return;
+      // "set-now" 代表 ensureCourseChosen 內的 setHeading 已原子收錨；
+      // "already" 代表航線/航向早已存在，這裡才需要另外送收錨請求。
+      if (outcome === "already") await api.anchor(worldId, fleet.id);
+      seedFleetActivity("SAILING");
+      setNotice(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "操作失敗");
+    }
+  }
+
+  /** ↑/W：依目前狀態出港或收錨續航；SAILING／其他狀態下無作用。 */
+  function handleThrottleUp() {
+    if (!fleet || gameEnded) return;
+    if (activity === "DOCKED") void handleDepart();
+    else if (activity === "ANCHORED") void handleResumeSailing();
+  }
+
+  /** 空白鍵：SAILING → 下錨；ANCHORED → 收錨續航（需航線/航向）。 */
+  function handleAnchorKey() {
+    if (!fleet || gameEnded) return;
+    if (activity === "SAILING") {
+      setError(null);
+      api
+        .anchor(worldId, fleet.id)
+        .then(() => seedFleetActivity("ANCHORED"))
+        .catch((err) => setError(err instanceof ApiError ? err.message : "操作失敗"));
+    } else if (activity === "ANCHORED") {
+      void handleResumeSailing();
+    }
+  }
+
+  /** ←/→（或 A/D）：以 60° 為單位轉舵，切換／維持手動操舵模式（M12）。 */
+  function rotateHeading(delta: 1 | -1) {
+    if (!fleet || gameEnded || !fleetOffsetPos) return;
+    if (activity === "IN_BATTLE" || activity === "EXPLORING") return;
+    const now = Date.now();
+    if (now - lastSteerAtRef.current < 150) return; // 前端節流：150ms 至多一發
+    lastSteerAtRef.current = now;
+    const base = displayedHeading ?? firstNavigableHeading(HEXMAP, fleetOffsetPos) ?? 0;
+    const next = (((base + delta) % 6) + 6) % 6;
+    setPendingHeading(next);
+    setRoute(null); // 互斥：操舵即切手動模式，清掉航線預覽
+    socketRef.current?.emit(WS_EVENTS.CLIENT_STEER, { worldId, fleetId: fleet.id, heading: next });
+  }
+
+  // M12 鍵盤操舵：監聽器只掛載一次，透過 ref 讀最新的 handler 閉包，
+  // 避免每次 render（尤其航行中每個 tick 都會 render）都重新綁定 window 監聽器。
+  const keyHandlersRef = useRef({ rotateHeading, handleThrottleUp, handleAnchorKey });
+  keyHandlersRef.current = { rotateHeading, handleThrottleUp, handleAnchorKey };
+
+  useEffect(() => {
+    function isTypingTarget(target: EventTarget | null): boolean {
+      if (!(target instanceof HTMLElement)) return false;
+      return (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT" ||
+        target.isContentEditable
+      );
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (isTypingTarget(e.target)) return;
+      const h = keyHandlersRef.current;
+      switch (e.key) {
+        case "ArrowLeft":
+        case "a":
+        case "A":
+          h.rotateHeading(-1);
+          break;
+        case "ArrowRight":
+        case "d":
+        case "D":
+          h.rotateHeading(1);
+          break;
+        case "ArrowUp":
+        case "w":
+        case "W":
+          e.preventDefault();
+          h.handleThrottleUp();
+          break;
+        case " ":
+          e.preventDefault();
+          h.handleAnchorKey();
+          break;
+        case "1":
+          setSpeedIdx(0);
+          break;
+        case "2":
+          setSpeedIdx(1);
+          break;
+        case "3":
+          setSpeedIdx(2);
+          break;
+        case "4":
+          setSpeedIdx(3);
+          break;
+        default:
+          return;
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   /** 目的地顯示名稱：港口用中文名，自由航行顯示海域座標 */
   const destinationLabel = route
@@ -371,6 +523,16 @@ export default function PlayPage() {
             sailing={activity === "SAILING"}
             routeWaypoints={route?.waypoints ?? null}
             visitedPortIds={visitedPortIds}
+            previewHeading={
+              (activity === "DOCKED" || activity === "ANCHORED" ? displayedHeading : null) as
+                | 0
+                | 1
+                | 2
+                | 3
+                | 4
+                | 5
+                | null
+            }
             onPortClick={(portId) => void handleMapTarget({ targetPortId: portId })}
             onSeaClick={(coord) => void handleMapTarget({ target: coord })}
           />
@@ -380,12 +542,19 @@ export default function PlayPage() {
               <>
                 <p className="text-slate-200">
                   停靠於 <span className="font-medium text-gold">{currentPort.name}</span>
-                  ——點擊海圖上的港口或任一海面設定航線。
+                  ——點擊海圖上的港口或任一海面設定航線，或用 ←/→ 選定出港方向。
                 </p>
-                {route && destinationLabel && (
+                {route && destinationLabel ? (
                   <button className="btn" onClick={handleDepart}>
                     出港（前往 {destinationLabel}）
                   </button>
+                ) : (
+                  displayedHeading !== null &&
+                  displayedHeading !== undefined && (
+                    <button className="btn" onClick={handleDepart}>
+                      出港（航向 {WIND_NAMES[displayedHeading]}）
+                    </button>
+                  )
                 )}
               </>
             )}
@@ -401,15 +570,22 @@ export default function PlayPage() {
                     {s.label}
                   </button>
                 ))}
-                {destinationLabel && (
+                {destinationLabel ? (
                   <span className="text-sm text-slate-400">航向 {destinationLabel}</span>
+                ) : (
+                  displayedHeading !== null &&
+                  displayedHeading !== undefined && (
+                    <span className="text-sm text-slate-400">
+                      手動操舵 → {WIND_NAMES[displayedHeading]}（←/→ 轉舵）
+                    </span>
+                  )
                 )}
               </div>
             )}
             {activity === "ANCHORED" && (
               <p className="text-slate-200">
                 艦隊在海上<span className="font-medium text-gold">下錨中</span>
-                ——點擊海面或港口設定新航向（自動收錨啟航），或探索周邊海域。
+                ——點擊海面或港口設定新航向，或用 ←/→ 選方向後按 ↑ 收錨續航；也可探索周邊海域。
               </p>
             )}
             <ExplorationPanel
@@ -420,6 +596,9 @@ export default function PlayPage() {
                 api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
               }}
             />
+            <span className="text-xs text-slate-500">
+              鍵盤：←/→ 轉舵・↑ 出港/收錨・空白鍵 下錨・1–4 航速
+            </span>
           </section>
 
           {activity === "DOCKED" && currentPort && fleet.ships[0] && (

@@ -7,6 +7,7 @@ export const WS_EVENTS = {
   CLIENT_JOIN: "client:join",
   CLIENT_RESYNC: "client:resync",
   CLIENT_ADVANCE: "client:advance",
+  CLIENT_STEER: "client:steer",
   BATTLE_ACTION: "battle:action",
   // server → client
   SERVER_JOINED: "server:joined",

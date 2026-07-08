@@ -3,8 +3,10 @@
  * M2 簡化：先不計入風向修正（docs/01 §4.1 的 wind_modifier），
  * 待海況/風系統上線後在 fleetSpeed 補上 wind_modifier 與 condition_modifier。
  */
+import type { WindDirection } from "../content/regions";
 import { hexNeighbors, offsetDistance, type OffsetCoord } from "./hex";
-import { moveCost, terrainAt, type HexMap } from "./hexmap";
+import { inBounds, isNavigable, moveCost, terrainAt, type HexMap } from "./hexmap";
+import { hexNeighborInDirection } from "./wind";
 
 export interface Route {
   waypoints: OffsetCoord[];
@@ -55,6 +57,45 @@ export function stepAlongRoute(map: HexMap, route: Route, speedBudget: number): 
   }
 
   return { pos, cursor, arrived: cursor === route.waypoints.length - 1, spent };
+}
+
+export interface ManualStepResult {
+  pos: OffsetCoord;
+  spent: number;
+  /** true＝前方不可航行而提前停下（非預算耗盡）；呼叫端應自動下錨（docs/10 §M12） */
+  blockedByLand: boolean;
+}
+
+/**
+ * 沿固定航向直線前進最多 speedBudget（M12 鍵盤操舵；區別於 stepAlongRoute
+ * 的預算 waypoint 序列）。遇到不可航行地形立即停止並回報 blockedByLand——
+ * 第一版不做繞行，簡單、可預期。
+ */
+export function stepManualHeading(
+  map: HexMap,
+  start: OffsetCoord,
+  heading: WindDirection,
+  speedBudget: number,
+): ManualStepResult {
+  let budget = speedBudget;
+  let spent = 0;
+  let pos = start;
+  let blockedByLand = false;
+
+  while (budget > 0) {
+    const next = hexNeighborInDirection(pos, heading);
+    if (!inBounds(map, next) || !isNavigable(terrainAt(map, next))) {
+      blockedByLand = true;
+      break;
+    }
+    const cost = moveCost(terrainAt(map, next));
+    if (cost > budget) break;
+    budget -= cost;
+    spent += cost;
+    pos = next;
+  }
+
+  return { pos, spent, blockedByLand };
 }
 
 /** 驗證 waypoints 為相鄰格組成的合法航線（後端信任邊界：拒絕瞬移/跳格）。 */

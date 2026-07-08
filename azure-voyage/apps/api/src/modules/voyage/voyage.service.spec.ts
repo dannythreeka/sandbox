@@ -2,7 +2,10 @@ import type { EventEmitter2 } from "@nestjs/event-emitter";
 import { Prisma, type Fleet } from "@prisma/client";
 import {
   BALANCE,
+  firstNavigableHeading,
   HEXMAP,
+  hexDirectionBetween,
+  hexNeighbors,
   HOME_PORT_ID,
   isNavigable,
   oddrToAxial,
@@ -12,6 +15,7 @@ import {
   terrainAt,
   type OffsetCoord,
   type ServerTickPayload,
+  type WindDirection,
 } from "@azure-voyage/shared";
 import type { PrismaService } from "../../prisma/prisma.service";
 import { VoyageService, WORLD_ARRIVAL_EVENT, WORLD_TICK_EVENT } from "./voyage.service";
@@ -31,6 +35,21 @@ function findHexNear(origin: OffsetCoord, ok: (c: OffsetCoord) => boolean): Offs
   throw new Error("test setup: no hex matching predicate near origin");
 }
 
+/** 掃地圖找一個「可航行格緊鄰陸地」的組合，回傳起點與指向陸地的航向（M12 撞陸測試用）。 */
+function findLandApproach(): { start: OffsetCoord; heading: WindDirection } {
+  for (let row = 0; row < HEXMAP.height; row++) {
+    for (let col = 0; col < HEXMAP.width; col++) {
+      if (terrainAt(HEXMAP, { col, row }) !== TERRAIN.LAND) continue;
+      for (const n of hexNeighbors({ col, row })) {
+        if (!isNavigable(terrainAt(HEXMAP, n))) continue;
+        const heading = hexDirectionBetween(n, { col, row });
+        if (heading !== null) return { start: n, heading };
+      }
+    }
+  }
+  throw new Error("test setup: no land approach found");
+}
+
 function makeFleet(overrides: Partial<Fleet> = {}): Fleet {
   const home = oddrToAxial(portById(HOME_PORT_ID).coord);
   return {
@@ -47,6 +66,7 @@ function makeFleet(overrides: Partial<Fleet> = {}): Fleet {
     water: 30,
     morale: 70,
     speedCarry: 0,
+    heading: null,
     ...overrides,
   } as Fleet;
 }
@@ -379,5 +399,143 @@ describe("free sailing (sea-hex target)", () => {
     expect(oddrToAxial(openSea)).toEqual({ q: fleet.posQ, r: fleet.posR });
     expect(emitted.some((e) => e.event === WORLD_ARRIVAL_EVENT)).toBe(false);
     expect(lastTick?.notices.some((n) => n.includes("下錨"))).toBe(true);
+  });
+});
+
+describe("VoyageService.setHeading (M12 manual steering)", () => {
+  const homeCoord = portById(HOME_PORT_ID).coord;
+  const heading = firstNavigableHeading(HEXMAP, homeCoord)!;
+
+  it("sets a manual heading and clears any stored route atomically", async () => {
+    const fleet = makeFleet();
+    const { prisma } = makePrismaMock({ fleet });
+    const { events } = makeEventsMock();
+    const service = new VoyageService(prisma, events);
+    await service.setRoute("u1", "w1", "f1", { targetPortId: NORTH_PORT_ID });
+
+    const result = await service.setHeading("u1", "w1", "f1", heading);
+
+    expect(result.heading).toBe(heading);
+    expect(fleet.heading).toBe(heading);
+    expect(fleet.route).toBeNull(); // 互斥：設航向即清航線
+  });
+
+  it("setRoute clears any stored heading atomically (mutual exclusivity both ways)", async () => {
+    const fleet = makeFleet();
+    const { prisma } = makePrismaMock({ fleet });
+    const { events } = makeEventsMock();
+    const service = new VoyageService(prisma, events);
+    await service.setHeading("u1", "w1", "f1", heading);
+
+    await service.setRoute("u1", "w1", "f1", { targetPortId: NORTH_PORT_ID });
+
+    expect(fleet.heading).toBeNull();
+  });
+
+  it("rejects steering while in battle", async () => {
+    const fleet = makeFleet({ activity: "IN_BATTLE" });
+    const { prisma } = makePrismaMock({ fleet });
+    const { events } = makeEventsMock();
+    const service = new VoyageService(prisma, events);
+
+    await expect(service.setHeading("u1", "w1", "f1", heading)).rejects.toMatchObject({
+      code: "FLEET_BUSY",
+    });
+  });
+
+  it("atomically weighs anchor when steering while ANCHORED", async () => {
+    const anchorAxial = oddrToAxial(homeCoord);
+    const fleet = makeFleet({ activity: "ANCHORED", dockedPortId: null, posQ: anchorAxial.q, posR: anchorAxial.r });
+    const { prisma } = makePrismaMock({ fleet });
+    const { events } = makeEventsMock();
+    const service = new VoyageService(prisma, events);
+
+    await service.setHeading("u1", "w1", "f1", heading);
+
+    expect(fleet.activity).toBe("SAILING");
+    expect(fleet.heading).toBe(heading);
+  });
+
+  it("departs on a manual heading with no route set (M12 relaxes NO_ROUTE_SET)", async () => {
+    const fleet = makeFleet();
+    const { prisma } = makePrismaMock({ fleet });
+    const { events } = makeEventsMock();
+    const service = new VoyageService(prisma, events);
+    await service.setHeading("u1", "w1", "f1", heading);
+
+    const result = await service.depart("u1", "w1", "f1");
+
+    expect(result.departed).toBe(true);
+    expect(fleet.activity).toBe("SAILING");
+  });
+
+  it("resuming from ANCHORED without a route or heading is rejected", async () => {
+    const fleet = makeFleet({ activity: "ANCHORED", dockedPortId: null, route: null, heading: null });
+    const { prisma } = makePrismaMock({ fleet });
+    const { events } = makeEventsMock();
+    const service = new VoyageService(prisma, events);
+
+    await expect(service.toggleAnchor("u1", "w1", "f1")).rejects.toMatchObject({
+      code: "NO_ROUTE_SET",
+    });
+  });
+});
+
+describe("VoyageService.advanceOneTick (M12 manual heading movement)", () => {
+  const homeCoord = portById(HOME_PORT_ID).coord;
+  const heading = firstNavigableHeading(HEXMAP, homeCoord)!;
+
+  it("moves the fleet along the fixed heading each tick, reporting wind and heading in the delta", async () => {
+    const fleet = makeFleet();
+    const { prisma } = makePrismaMock({ fleet });
+    const { events } = makeEventsMock();
+    const service = new VoyageService(prisma, events);
+    await service.setHeading("u1", "w1", "f1", heading);
+    await service.depart("u1", "w1", "f1");
+
+    const before = { q: fleet.posQ, r: fleet.posR };
+    const result = await service.advanceOneTick("w1");
+    const mine = result.fleets.find((f) => f.id === "f1")!;
+
+    expect(fleet.posQ === before.q && fleet.posR === before.r).toBe(false); // 位置有變
+    expect(mine.wind).toBeDefined();
+    // 尚在航行中才會回報 heading；若這一步剛好開進港口，heading 會被清空，
+    // 兩種結果都是合法的，只要沒有拋錯即可（見下面專門測試撞陸/入港分支）。
+    if (fleet.activity === "SAILING") expect(mine.heading).toBe(heading);
+  });
+
+  it("auto-anchors and clears heading when the fixed heading runs into land", async () => {
+    const { start, heading: intoLand } = findLandApproach();
+    const startAxial = oddrToAxial(start);
+    const fleet = makeFleet({ posQ: startAxial.q, posR: startAxial.r, dockedPortId: null });
+    const { prisma } = makePrismaMock({ fleet });
+    const { events } = makeEventsMock();
+    const service = new VoyageService(prisma, events);
+    await service.setHeading("u1", "w1", "f1", intoLand);
+    await service.depart("u1", "w1", "f1");
+
+    let lastTick: ServerTickPayload | null = null;
+    for (let i = 0; i < 20 && fleet.activity === "SAILING"; i++) {
+      lastTick = await service.advanceOneTick("w1");
+    }
+
+    expect(fleet.activity).toBe("ANCHORED");
+    expect(fleet.heading).toBeNull();
+    expect(lastTick?.notices.some((n) => n.includes("陸地"))).toBe(true);
+  });
+
+  it("keeps speedCarry finite and bounded in manual mode too", async () => {
+    const fleet = makeFleet();
+    const { prisma } = makePrismaMock({ fleet });
+    const { events } = makeEventsMock();
+    const service = new VoyageService(prisma, events);
+    await service.setHeading("u1", "w1", "f1", heading);
+    await service.depart("u1", "w1", "f1");
+
+    for (let i = 0; i < 30 && fleet.activity === "SAILING"; i++) {
+      await service.advanceOneTick("w1");
+      expect(Number.isFinite(fleet.speedCarry)).toBe(true);
+      expect(fleet.speedCarry).toBeGreaterThanOrEqual(0);
+    }
   });
 });

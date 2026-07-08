@@ -15,11 +15,14 @@ import {
   ClientBattleActionSchema,
   ClientJoinSchema,
   ClientResyncSchema,
+  ClientSteerSchema,
   WS_EVENTS,
   type ClientAdvancePayload,
   type ClientBattleActionPayload,
+  type ClientSteerPayload,
   type ServerJoinedPayload,
   type ServerResyncPayload,
+  type WindDirection,
 } from "@azure-voyage/shared";
 import { AllExceptionsFilter } from "../common/errors/all-exceptions.filter";
 import { GameError } from "../common/errors/game-error";
@@ -27,6 +30,7 @@ import type { JwtPayload } from "../common/auth/jwt-payload";
 import { ZodPipe } from "../common/zod/zod.pipe";
 import { BattleService } from "../modules/battle/battle.service";
 import { ClockService } from "../modules/clock/clock.service";
+import { VoyageService } from "../modules/voyage/voyage.service";
 import type {
   WorldArrivalEventPayload,
   WorldTickEventPayload,
@@ -57,6 +61,7 @@ export class GameGateway implements OnGatewayConnection {
     private readonly worldService: WorldService,
     private readonly clockService: ClockService,
     private readonly battleService: BattleService,
+    private readonly voyageService: VoyageService,
   ) {}
 
   /** 握手驗證：handshake.auth.token 必須是有效 access token，否則直接斷線。 */
@@ -107,6 +112,20 @@ export class GameGateway implements OnGatewayConnection {
     // 廣播由 ClockService → VoyageService 觸發的 domain event 負責（見下方 @OnEvent）；
     // 這裡的回傳值只作為呼叫方的 ack。
     return this.clockService.requestAdvance(userId, body.worldId, body.ticks);
+  }
+
+  @SubscribeMessage(WS_EVENTS.CLIENT_STEER)
+  async onSteer(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody(new ZodPipe(ClientSteerSchema)) body: ClientSteerPayload,
+  ) {
+    const userId = this.requireUser(socket);
+    return this.voyageService.setHeading(
+      userId,
+      body.worldId,
+      body.fleetId,
+      body.heading as WindDirection,
+    );
   }
 
   @SubscribeMessage(WS_EVENTS.BATTLE_ACTION)

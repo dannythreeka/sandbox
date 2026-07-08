@@ -2,14 +2,21 @@ import { describe, expect, it } from "vitest";
 import { BALANCE } from "../content/constants";
 import { REGIONS, type WindDirection } from "../content/regions";
 import { hexNeighbors, type OffsetCoord } from "./hex";
+import type { HexMap } from "./hexmap";
 import {
+  firstNavigableHeading,
   hexDirectionBetween,
+  hexNeighborInDirection,
   regionAt,
   seasonAtTick,
   windAngleGap,
   windAtTick,
   windModifierFor,
 } from "./wind";
+
+function makeMap(rows: string[]): HexMap {
+  return { width: rows[0].length, height: rows.length, rows };
+}
 
 describe("seasonAtTick", () => {
   it("maps tick boundaries to the right season", () => {
@@ -124,5 +131,38 @@ describe("windAngleGap / windModifierFor", () => {
 
   it("tailwind beats headwind", () => {
     expect(windModifierFor(0, 0)).toBeGreaterThan(windModifierFor(0, 3));
+  });
+});
+
+describe("hexNeighborInDirection", () => {
+  it("is the inverse of hexDirectionBetween for every neighbor", () => {
+    for (const origin of [{ col: 10, row: 10 }, { col: 10, row: 11 }] as OffsetCoord[]) {
+      for (const n of hexNeighbors(origin)) {
+        const dir = hexDirectionBetween(origin, n)!;
+        expect(hexNeighborInDirection(origin, dir)).toEqual(n);
+      }
+    }
+  });
+
+  it("moving east then west returns to the origin", () => {
+    const origin = { col: 5, row: 5 };
+    const east = hexNeighborInDirection(origin, 0);
+    expect(hexNeighborInDirection(east, 3)).toEqual(origin);
+  });
+});
+
+describe("firstNavigableHeading", () => {
+  it("picks the first navigable direction starting from east", () => {
+    // 東（0）方向是陸地，其餘方向開放 → 應跳過東，選下一個可航行方位
+    const map = makeMap(["DLD", "DDD", "DDD"]);
+    const dir = firstNavigableHeading(map, { col: 0, row: 1 });
+    expect(dir).not.toBeNull();
+    const next = hexNeighborInDirection({ col: 0, row: 1 }, dir!);
+    expect(map.rows[next.row]?.[next.col]).not.toBe("L");
+  });
+
+  it("returns null when boxed in entirely by land", () => {
+    const map = makeMap(["LLL", "LDL", "LLL"]);
+    expect(firstNavigableHeading(map, { col: 1, row: 1 })).toBeNull();
   });
 });

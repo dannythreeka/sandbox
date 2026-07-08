@@ -31,6 +31,14 @@ export const ClientAdvanceSchema = z.object({
 });
 export type ClientAdvancePayload = z.infer<typeof ClientAdvanceSchema>;
 
+/** 鍵盤即時操舵（M12）：0–5 六角方位，語意同 WindDirection（0=東，逆時針）。 */
+export const ClientSteerSchema = z.object({
+  worldId: z.string().min(1),
+  fleetId: z.string().min(1),
+  heading: z.number().int().min(0).max(5),
+});
+export type ClientSteerPayload = z.infer<typeof ClientSteerSchema>;
+
 export const FleetTickDeltaSchema = z.object({
   id: z.string(),
   pos: z.object({ q: z.number().int(), r: z.number().int() }),
@@ -43,6 +51,8 @@ export const FleetTickDeltaSchema = z.object({
   wind: z
     .object({ dir: z.number().int().min(0).max(5), modifier: z.number() })
     .optional(),
+  /** M12：手動操舵模式的當前航向；null／缺席＝自動尋路或無方向（optional 向後相容） */
+  heading: z.number().int().min(0).max(5).nullable().optional(),
 });
 export type FleetTickDelta = z.infer<typeof FleetTickDeltaSchema>;
 

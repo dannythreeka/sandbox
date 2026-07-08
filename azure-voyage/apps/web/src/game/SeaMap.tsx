@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Application, Container, FederatedPointerEvent, Graphics, Text } from "pixi.js";
 import {
   HEXMAP,
+  hexNeighborInDirection,
   inBounds,
   isNavigable,
   portAtCoord,
@@ -11,6 +12,7 @@ import {
   TERRAIN,
   terrainAt,
   type OffsetCoord,
+  type WindDirection,
 } from "@azure-voyage/shared";
 import { hexCorners, hexToPixel, pixelToHex } from "./hexPixel";
 
@@ -37,6 +39,11 @@ export interface SeaMapProps {
   onPortClick: (portId: string) => void;
   /** 點擊任一可航行海格（自由航行）；點到港口格會走 onPortClick */
   onSeaClick: (coord: OffsetCoord) => void;
+  /**
+   * M12：船隻靜止時（DOCKED/ANCHORED 瞄準中）要預覽的航向；null／undefined
+   * 不套用。SAILING 中船隻本來就在移動，靠移動方向自然轉向，不需要這個。
+   */
+  previewHeading?: WindDirection | null;
 }
 
 /** 程式繪製的原創俯視帆船（船首朝 +x，rotation 對齊航向） */
@@ -110,6 +117,7 @@ export function SeaMap({
   visitedPortIds,
   onPortClick,
   onSeaClick,
+  previewHeading = null,
 }: SeaMapProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
@@ -124,6 +132,8 @@ export function SeaMap({
   const followRef = useRef(true);
   const fleetPosRef = useRef(fleetPos);
   fleetPosRef.current = fleetPos;
+  const previewHeadingRef = useRef(previewHeading);
+  previewHeadingRef.current = previewHeading;
   const onPortClickRef = useRef(onPortClick);
   onPortClickRef.current = onPortClick;
   const onSeaClickRef = useRef(onSeaClick);
@@ -296,12 +306,23 @@ export function SeaMap({
             const k = Math.min(1, dt * 3.2);
             ship.position.x += dx * k;
             ship.position.y += dy * k;
+          }
+          // 移動中靠位移方向自然轉向；靜止時（DOCKED/ANCHORED 瞄準）改用
+          // M12 的 previewHeading 直接預覽選定航向，讓「轉舵」在出港前就看得到。
+          const preview = previewHeadingRef.current;
+          if (dist > 1.5 || preview !== null) {
+            let targetAngle: number;
             if (dist > 1.5) {
-              let diff = Math.atan2(dy, dx) - ship.rotation;
-              while (diff > Math.PI) diff -= 2 * Math.PI;
-              while (diff < -Math.PI) diff += 2 * Math.PI;
-              ship.rotation += diff * Math.min(1, dt * 6);
+              targetAngle = Math.atan2(dy, dx);
+            } else {
+              const from = hexToPixel(fleetPosRef.current);
+              const to = hexToPixel(hexNeighborInDirection(fleetPosRef.current, preview!));
+              targetAngle = Math.atan2(to.y - from.y, to.x - from.x);
             }
+            let diff = targetAngle - ship.rotation;
+            while (diff > Math.PI) diff -= 2 * Math.PI;
+            while (diff < -Math.PI) diff += 2 * Math.PI;
+            ship.rotation += diff * Math.min(1, dt * 6);
           }
 
           const now = performance.now();
