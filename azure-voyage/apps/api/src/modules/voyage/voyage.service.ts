@@ -3,13 +3,16 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Prisma, type Fleet } from "@prisma/client";
 import {
   axialToOddr,
+  BALANCE,
   consumeSupplies,
   findPath,
   fleetSpeed,
   HEXMAP,
   navigatorSpeedBonus,
   oddrToAxial,
+  portAtCoord,
   portById,
+  PORTS,
   RouteViewSchema,
   shipClassById,
   stepAlongRoute,
@@ -17,6 +20,7 @@ import {
   type Route,
   type ServerArrivalPayload,
   type ServerTickPayload,
+  type SetRouteInput,
 } from "@azure-voyage/shared";
 import { GameError } from "../../common/errors/game-error";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -58,25 +62,43 @@ export class VoyageService {
   }
 
   /**
-   * 設定航線（M2 簡化：前端只送目的港，後端用 shared A* 算出權威航線；
-   * docs/04 原設計是前端先跑預覽、送 waypoints 給後端驗證，等 M2+ 前端 Pixi 預覽上線後補上）。
+   * 設定航線。目的地可以是港口（targetPortId）或任一可航行海格（target，自由航行）；
+   * 兩者都由後端以 shared A* 算出權威航線。自由航行的目標若剛好是港口格，
+   * 視同指定該港（抵達即入港，而非在港外下錨）。
    */
-  async setRoute(userId: string, worldId: string, fleetId: string, targetPortId: string) {
+  async setRoute(userId: string, worldId: string, fleetId: string, input: SetRouteInput) {
     const fleet = await this.getOwnedPlayerFleet(userId, worldId, fleetId);
     if (NON_ROUTABLE_ACTIVITIES.has(fleet.activity)) throw new GameError("FLEET_BUSY");
 
-    const targetPort = portById(targetPortId); // throws if unknown id (content bug, not user input issue)
+    let goal: { col: number; row: number };
+    let targetPortId: string | undefined;
+    if (input.targetPortId !== undefined) {
+      const targetPort = PORTS.find((p) => p.id === input.targetPortId);
+      if (!targetPort) throw new GameError("ROUTE_INVALID"); // 未知港口 id 屬使用者輸入問題
+      goal = targetPort.coord;
+      targetPortId = targetPort.id;
+    } else {
+      goal = input.target!;
+      targetPortId = portAtCoord(goal)?.id;
+    }
+
     const start = fleet.activity === "DOCKED" && fleet.dockedPortId
       ? portById(fleet.dockedPortId).coord
       : axialToOddr({ q: fleet.posQ, r: fleet.posR });
 
-    const path = findPath(HEXMAP, start, targetPort.coord);
+    const path = findPath(HEXMAP, start, goal);
     if (!path) throw new GameError("ROUTE_INVALID");
 
     const route: Route = { waypoints: path, cursor: 0, targetPortId };
     await this.prisma.fleet.update({
       where: { id: fleet.id },
-      data: { route: route as unknown as Prisma.InputJsonValue },
+      data: {
+        route: route as unknown as Prisma.InputJsonValue,
+        // 海上下錨中設定新航向＝收錨啟航，與存航線做成同一次原子更新。
+        // （拆成 setRoute + toggleAnchor 兩個請求會有競態：重複點擊可能把錨
+        // 切回去，艦隊被錨死但前端樂觀顯示航行中，時間就這樣空轉。）
+        ...(fleet.activity === "ANCHORED" ? { activity: "SAILING" as const } : {}),
+      },
     });
     return RouteViewSchema.parse(route);
   }
@@ -88,11 +110,34 @@ export class VoyageService {
     const route = fleet.route as Route | null;
     if (!route || route.waypoints.length < 2) throw new GameError("NO_ROUTE_SET");
 
-    await this.prisma.fleet.update({
-      where: { id: fleet.id },
-      data: { activity: "SAILING", dockedPortId: null },
+    // 出港前自動補給（M10）：糧水補到滿、按單價扣商會資金；資金不足就按
+    // 可負擔比例補（不擋出港——空著肚子也能啟航，風險自負）。沒有這個機制
+    // 補給只會一路遞減，玩家海上漫遊幾天後就永遠斷糧。
+    const guild = await this.prisma.guild.findUniqueOrThrow({ where: { id: fleet.guildId } });
+    const gold = Number(guild.gold);
+    const foodNeed = Math.max(0, BALANCE.STARTING_FOOD - fleet.food);
+    const waterNeed = Math.max(0, BALANCE.STARTING_WATER - fleet.water);
+    const fullCost = (foodNeed + waterNeed) * BALANCE.SUPPLY_GOLD_PER_UNIT;
+    const ratio = fullCost === 0 ? 0 : Math.min(1, gold / fullCost);
+    const foodBuy = Math.floor(foodNeed * ratio);
+    const waterBuy = Math.floor(waterNeed * ratio);
+    const cost = (foodBuy + waterBuy) * BALANCE.SUPPLY_GOLD_PER_UNIT;
+
+    await this.prisma.$transaction(async (tx) => {
+      if (cost > 0) {
+        await tx.guild.update({ where: { id: guild.id }, data: { gold: BigInt(gold - cost) } });
+      }
+      await tx.fleet.update({
+        where: { id: fleet.id },
+        data: {
+          activity: "SAILING",
+          dockedPortId: null,
+          food: fleet.food + foodBuy,
+          water: fleet.water + waterBuy,
+        },
+      });
     });
-    return { departed: true };
+    return { departed: true, resupplied: { food: foodBuy, water: waterBuy, cost } };
   }
 
   /** 海上下錨／收錨（docs/04 §3）：ANCHORED 艦隊暫停移動與遭遇，供探索使用。 */
@@ -119,6 +164,7 @@ export class VoyageService {
 
     const deltas: FleetTickDelta[] = [];
     const arrivals: WorldArrivalEventPayload[] = [];
+    const notices: string[] = [];
     const newTick = world.currentTick + 1;
 
     for (const fleet of sailingFleets) {
@@ -137,7 +183,10 @@ export class VoyageService {
         totalCrew,
       );
       const newPos = oddrToAxial(step.pos);
-      const arrived = step.arrived && route.targetPortId !== undefined;
+      // 抵達終點：有目的港 → 入港；自由航行（無目的港）→ 原地下錨，銜接探索
+      const arrivedPort = step.arrived && route.targetPortId !== undefined;
+      const anchoredAtSea = step.arrived && route.targetPortId === undefined;
+      const activity = arrivedPort ? "DOCKED" : anchoredAtSea ? "ANCHORED" : "SAILING";
 
       await this.prisma.fleet.update({
         where: { id: fleet.id },
@@ -147,26 +196,29 @@ export class VoyageService {
           food: supplies.food,
           water: supplies.water,
           morale: supplies.morale,
-          activity: arrived ? "DOCKED" : "SAILING",
-          dockedPortId: arrived ? route.targetPortId : null,
-          route: arrived
+          activity,
+          dockedPortId: arrivedPort ? route.targetPortId : null,
+          route: step.arrived
             ? Prisma.DbNull
             : ({ ...route, cursor: step.cursor } as unknown as Prisma.InputJsonValue),
         },
       });
 
-      if (arrived) {
+      if (arrivedPort) {
         arrivals.push({
           worldId,
           payload: { tick: newTick, fleetId: fleet.id, portId: route.targetPortId! },
         });
       }
+      if (anchoredAtSea) {
+        notices.push(`「${fleet.name}」已抵達目標海域，下錨待命。`);
+      }
 
       deltas.push({
         id: fleet.id,
         pos: newPos,
-        activity: arrived ? "DOCKED" : "SAILING",
-        dockedPortId: arrived ? route.targetPortId! : null,
+        activity,
+        dockedPortId: arrivedPort ? route.targetPortId! : null,
         food: supplies.food,
         water: supplies.water,
         morale: supplies.morale,
@@ -175,7 +227,7 @@ export class VoyageService {
 
     await this.prisma.gameWorld.update({ where: { id: worldId }, data: { currentTick: newTick } });
 
-    const tickPayload: ServerTickPayload = { tick: newTick, fleets: deltas, notices: [] };
+    const tickPayload: ServerTickPayload = { tick: newTick, fleets: deltas, notices };
     this.events.emit(WORLD_TICK_EVENT, { worldId, payload: tickPayload } satisfies WorldTickEventPayload);
     for (const arrival of arrivals) {
       this.events.emit(WORLD_ARRIVAL_EVENT, arrival);

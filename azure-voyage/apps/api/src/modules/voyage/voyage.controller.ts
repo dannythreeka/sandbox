@@ -18,7 +18,7 @@ export class VoyageController {
     @Param("fleetId") fleetId: string,
     @Body(new ZodPipe(SetRouteInputSchema)) input: SetRouteInput,
   ) {
-    return this.voyageService.setRoute(user.userId, worldId, fleetId, input.targetPortId);
+    return this.voyageService.setRoute(user.userId, worldId, fleetId, input);
   }
 
   @Post("depart")
