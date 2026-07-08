@@ -39,6 +39,10 @@ export const FleetTickDeltaSchema = z.object({
   food: z.number().int(),
   water: z.number().int(),
   morale: z.number().int(),
+  /** M11：所在海域當日風向與對目前航向的速度修正（optional 向後相容） */
+  wind: z
+    .object({ dir: z.number().int().min(0).max(5), modifier: z.number() })
+    .optional(),
 });
 export type FleetTickDelta = z.infer<typeof FleetTickDeltaSchema>;
 

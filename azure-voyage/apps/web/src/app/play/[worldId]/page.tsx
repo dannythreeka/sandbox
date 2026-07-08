@@ -9,7 +9,11 @@ import {
   BALANCE,
   ERROR_MESSAGES_ZH_TW,
   portById,
+  regionAt,
+  seasonAtTick,
+  windAtTick,
   WS_EVENTS,
+  type Season,
   type BattleStateView,
   type FleetTickDelta,
   type OffsetCoord,
@@ -44,6 +48,22 @@ const SPEED_PRESETS = [
   { label: "1x", intervalMs: 1500 },
   { label: "2x", intervalMs: 750 },
   { label: "4x", intervalMs: 300 },
+] as const;
+
+const SEASON_LABELS: Record<Season, string> = {
+  SPRING: "春",
+  SUMMER: "夏",
+  AUTUMN: "秋",
+  WINTER: "冬",
+};
+/** 風向名稱（0=東，逆時針；row 向下為南） */
+const WIND_NAMES = ["東", "東北", "西北", "西", "西南", "東南"] as const;
+/** 夾角檔位 0–3 的標籤與顏色（順風綠、逆風紅） */
+const WIND_GAP_LABELS = [
+  { text: "順風", cls: "text-emerald-300" },
+  { text: "側順", cls: "text-emerald-200" },
+  { text: "側風", cls: "text-slate-300" },
+  { text: "逆風", cls: "text-red-400" },
 ] as const;
 
 export default function PlayPage() {
@@ -173,6 +193,17 @@ export default function PlayPage() {
   );
   // 伺服器存 axial 座標；SeaMap 畫布用 offset（col,row）座標系
   const fleetOffsetPos = pos ? axialToOddr(pos) : null;
+  // ── M11 風向 HUD：航行中用伺服器 delta（含對航向的修正）；停靠/下錨時
+  // 前端以同一套 shared 純函式自算當日風向（world seed 確定性，兩端必一致）──
+  const currentTick = tick ?? snapshot?.world.currentTick ?? 0;
+  const region = fleetOffsetPos ? regionAt(fleetOffsetPos) : null;
+  const windDir =
+    fleetDelta?.wind?.dir ??
+    (region && snapshot ? windAtTick(region.id, currentTick, snapshot.world.seed) : null);
+  const windGapIdx =
+    activity === "SAILING" && fleetDelta?.wind
+      ? ([...BALANCE.WIND_MODIFIERS] as number[]).indexOf(fleetDelta.wind.modifier)
+      : -1;
   // 重新整理頁面時若世界早已結束（例如先前已達成勝利），仍要顯示終局畫面
   const gameEnded = victory !== null || (snapshot ? snapshot.world.status !== "ACTIVE" : false);
 
@@ -305,7 +336,26 @@ export default function PlayPage() {
                 </span>
               </p>
             </div>
-            <div className="flex gap-4 text-sm text-slate-300">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-300">
+              {region && windDir !== null && (
+                <span className="flex items-center gap-1.5">
+                  <span className="text-foam">{region.name}</span>
+                  <span>{SEASON_LABELS[seasonAtTick(currentTick)]}季</span>
+                  <span
+                    className="inline-block font-bold text-gold"
+                    style={{ transform: `rotate(${-60 * windDir}deg)` }}
+                    title={`風向：${WIND_NAMES[windDir]}風`}
+                  >
+                    →
+                  </span>
+                  <span>{WIND_NAMES[windDir]}風</span>
+                  {windGapIdx >= 0 && (
+                    <span className={WIND_GAP_LABELS[windGapIdx].cls}>
+                      {WIND_GAP_LABELS[windGapIdx].text}
+                    </span>
+                  )}
+                </span>
+              )}
               <span>糧 {food}</span>
               <span>水 {water}</span>
               <span>士氣 {morale}</span>

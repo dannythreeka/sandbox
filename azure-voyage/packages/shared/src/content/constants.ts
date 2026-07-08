@@ -51,6 +51,15 @@ export const BALANCE = {
   /** 出港自動補給的單價（每 1 糧或 1 水；M10 起使用） */
   SUPPLY_GOLD_PER_UNIT: 2,
 
+  // ── 風向系統（M11 起使用，docs/10 §M11）──
+  /** 一季的 tick 數（一年 = 4 × 90 = 360 天） */
+  SEASON_TICKS: 90,
+  /** 航向與風向夾角檔位 0–3（順風/側順/側風/逆風）的速度修正 */
+  WIND_MODIFIERS: [1.3, 1.15, 1.0, 0.6] as const,
+  /** 每日風向擾動：主風向機率；左右鄰向各一份；剩餘機率均分給其他三向 */
+  WIND_JITTER_MAIN: 0.6,
+  WIND_JITTER_ADJACENT: 0.15,
+
   // ── 航海士（M4 起使用，docs/01 §4.5）──
   /** 每 30 tick 結算一次薪資 */
   SALARY_INTERVAL_TICKS: 30,

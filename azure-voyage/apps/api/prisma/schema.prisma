@@ -109,6 +109,7 @@ model Fleet {
   food         Int           @default(0)
   water        Int           @default(0)
   morale       Int           @default(70)
+  speedCarry   Float         @default(0) // M11：未消耗移動預算跨 tick 進位（逆風/暗礁防凍結）
 
   ships    Ship[]
   officers Officer[]

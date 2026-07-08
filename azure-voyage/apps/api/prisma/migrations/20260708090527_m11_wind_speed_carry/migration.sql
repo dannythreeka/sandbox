@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Fleet" ADD COLUMN     "speedCarry" DOUBLE PRECISION NOT NULL DEFAULT 0;

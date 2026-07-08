@@ -46,6 +46,7 @@ function makeFleet(overrides: Partial<Fleet> = {}): Fleet {
     food: 30,
     water: 30,
     morale: 70,
+    speedCarry: 0,
     ...overrides,
   } as Fleet;
 }
@@ -60,8 +61,8 @@ function makePrismaMock(state: {
   const ships = [{ id: "s1", fleetId: state.fleet.id, shipClassId: "ship.lugger", crew: 8 }];
   const prisma = {
     gameWorld: {
-      findUnique: jest.fn(async () => ({ id: "w1", userId: "u1", ...world })),
-      findUniqueOrThrow: jest.fn(async () => ({ id: "w1", userId: "u1", ...world })),
+      findUnique: jest.fn(async () => ({ id: "w1", userId: "u1", seed: 4242, ...world })),
+      findUniqueOrThrow: jest.fn(async () => ({ id: "w1", userId: "u1", seed: 4242, ...world })),
       update: jest.fn(async ({ data }: { data: { currentTick: number } }) => {
         world.currentTick = data.currentTick;
         return { id: "w1", ...world };
@@ -230,6 +231,41 @@ describe("VoyageService.advanceOneTick", () => {
     expect(fleet.dockedPortId).toBe(NORTH_PORT_ID);
     expect(fleet.route).toBeNull();
     expect(emitted.some((e) => e.event === WORLD_ARRIVAL_EVENT)).toBe(true);
+  });
+
+  it("reports the daily wind in each sailing fleet's tick delta (M11)", async () => {
+    const fleet = makeFleet();
+    const { prisma } = makePrismaMock({ fleet });
+    const { events } = makeEventsMock();
+    const service = new VoyageService(prisma, events);
+    await service.setRoute("u1", "w1", "f1", { targetPortId: NORTH_PORT_ID });
+    await service.depart("u1", "w1", "f1");
+
+    const result = await service.advanceOneTick("w1");
+    const mine = result.fleets.find((f) => f.id === "f1")!;
+
+    expect(mine.wind).toBeDefined();
+    expect(mine.wind!.dir).toBeGreaterThanOrEqual(0);
+    expect(mine.wind!.dir).toBeLessThanOrEqual(5);
+    expect([...BALANCE.WIND_MODIFIERS]).toContain(mine.wind!.modifier);
+  });
+
+  it("keeps speedCarry finite and bounded across many ticks (M11)", async () => {
+    const fleet = makeFleet();
+    const { prisma } = makePrismaMock({ fleet });
+    const { events } = makeEventsMock();
+    const service = new VoyageService(prisma, events);
+    await service.setRoute("u1", "w1", "f1", { targetPortId: NORTH_PORT_ID });
+    await service.depart("u1", "w1", "f1");
+
+    for (let i = 0; i < 60 && fleet.activity === "SAILING"; i++) {
+      await service.advanceOneTick("w1");
+      expect(Number.isFinite(fleet.speedCarry)).toBe(true);
+      expect(fleet.speedCarry).toBeGreaterThanOrEqual(0);
+      // carry 上限 = max(基礎船速, 暗礁成本 3)；lugger 基礎 3
+      expect(fleet.speedCarry).toBeLessThanOrEqual(3);
+    }
+    expect(fleet.speedCarry).toBe(0); // 抵港歸零
   });
 
   it("never lets food or water go negative across many ticks", async () => {
