@@ -5,6 +5,7 @@ import {
   isContiguousRoute,
   navigatorSpeedBonus,
   stepAlongRoute,
+  stepManualHeading,
   type Route,
 } from "./movement";
 
@@ -74,5 +75,38 @@ describe("stepAlongRoute", () => {
     const reefMap = makeMap(["DDRDD"]);
     const r = stepAlongRoute(reefMap, route, 2); // 到 col1 花1，col2(礁)要3 > 剩餘1，停在col1
     expect(r.cursor).toBe(1);
+  });
+});
+
+describe("stepManualHeading", () => {
+  const map = makeMap(["DDDDD"]);
+
+  it("advances straight along a fixed heading (east) by budget", () => {
+    const r = stepManualHeading(map, { col: 0, row: 0 }, 0, 2);
+    expect(r.pos).toEqual({ col: 2, row: 0 });
+    expect(r.spent).toBe(2);
+    expect(r.blockedByLand).toBe(false);
+  });
+
+  it("stops short of overshooting into a costlier reef tile", () => {
+    const reefMap = makeMap(["DDRDD"]);
+    const r = stepManualHeading(reefMap, { col: 0, row: 0 }, 0, 2); // col1 花1，col2(礁)要3>剩1
+    expect(r.pos).toEqual({ col: 1, row: 0 });
+    expect(r.spent).toBe(1);
+    expect(r.blockedByLand).toBe(false);
+  });
+
+  it("reports blockedByLand instead of moving onto land", () => {
+    const landMap = makeMap(["DDLDD"]);
+    const r = stepManualHeading(landMap, { col: 0, row: 0 }, 0, 5);
+    expect(r.pos).toEqual({ col: 1, row: 0 }); // 卡在陸地前一格
+    expect(r.blockedByLand).toBe(true);
+  });
+
+  it("reports blockedByLand at the map edge (out of bounds)", () => {
+    const r = stepManualHeading(map, { col: 4, row: 0 }, 0, 3);
+    expect(r.pos).toEqual({ col: 4, row: 0 });
+    expect(r.blockedByLand).toBe(true);
+    expect(r.spent).toBe(0);
   });
 });
