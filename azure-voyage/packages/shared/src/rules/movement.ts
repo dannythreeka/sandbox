@@ -30,6 +30,8 @@ export interface StepResult {
   pos: OffsetCoord;
   cursor: number;
   arrived: boolean;
+  /** 本次實際消耗的移動成本（供 speedCarry 進位累積：carry = budget − spent） */
+  spent: number;
 }
 
 /**
@@ -39,6 +41,7 @@ export interface StepResult {
 export function stepAlongRoute(map: HexMap, route: Route, speedBudget: number): StepResult {
   let cursor = route.cursor;
   let budget = speedBudget;
+  let spent = 0;
   let pos = route.waypoints[cursor];
 
   while (budget > 0 && cursor < route.waypoints.length - 1) {
@@ -46,11 +49,12 @@ export function stepAlongRoute(map: HexMap, route: Route, speedBudget: number): 
     const cost = moveCost(terrainAt(map, next));
     if (cost > budget) break;
     budget -= cost;
+    spent += cost;
     cursor += 1;
     pos = next;
   }
 
-  return { pos, cursor, arrived: cursor === route.waypoints.length - 1 };
+  return { pos, cursor, arrived: cursor === route.waypoints.length - 1, spent };
 }
 
 /** 驗證 waypoints 為相鄰格組成的合法航線（後端信任邊界：拒絕瞬移/跳格）。 */

@@ -8,14 +8,20 @@ import {
   findPath,
   fleetSpeed,
   HEXMAP,
+  hexDirectionBetween,
+  moveCost,
   navigatorSpeedBonus,
   oddrToAxial,
   portAtCoord,
   portById,
   PORTS,
+  regionAt,
   RouteViewSchema,
   shipClassById,
   stepAlongRoute,
+  TERRAIN,
+  windAtTick,
+  windModifierFor,
   type FleetTickDelta,
   type Route,
   type ServerArrivalPayload,
@@ -177,7 +183,24 @@ export class VoyageService {
       const navStats = navigator?.stats as { nav: number } | undefined;
       const navBonus = navigatorSpeedBonus(navStats?.nav);
 
-      const step = stepAlongRoute(HEXMAP, route, fleetSpeed(slowest, navBonus));
+      // M11 風向：當日風向（確定性）對「route 目前段航向」的修正；
+      // 未消耗預算跨 tick 進位（speedCarry），確保逆風慢船也永不凍結——
+      // carry 上限取 max(基礎船速, 暗礁成本)，讓最貴地形終究攢得過去。
+      const region = regionAt(axialToOddr({ q: fleet.posQ, r: fleet.posR }));
+      const wind = windAtTick(region.id, newTick, world.seed);
+      const segDir =
+        route.cursor < route.waypoints.length - 1
+          ? hexDirectionBetween(route.waypoints[route.cursor], route.waypoints[route.cursor + 1])
+          : null;
+      const windMod = segDir === null ? 1 : windModifierFor(segDir, wind);
+      const baseSpeed = fleetSpeed(slowest, navBonus);
+      const budget = baseSpeed * windMod + fleet.speedCarry;
+      const carryMax = Math.max(baseSpeed, moveCost(TERRAIN.REEF));
+
+      const step = stepAlongRoute(HEXMAP, route, budget);
+      const carry = step.arrived
+        ? 0
+        : Math.min(Math.max(0, budget - step.spent), carryMax);
       const supplies = consumeSupplies(
         { food: fleet.food, water: fleet.water, morale: fleet.morale },
         totalCrew,
@@ -198,6 +221,7 @@ export class VoyageService {
           morale: supplies.morale,
           activity,
           dockedPortId: arrivedPort ? route.targetPortId : null,
+          speedCarry: carry,
           route: step.arrived
             ? Prisma.DbNull
             : ({ ...route, cursor: step.cursor } as unknown as Prisma.InputJsonValue),
@@ -222,6 +246,7 @@ export class VoyageService {
         food: supplies.food,
         water: supplies.water,
         morale: supplies.morale,
+        wind: { dir: wind, modifier: windMod },
       });
     }
 
