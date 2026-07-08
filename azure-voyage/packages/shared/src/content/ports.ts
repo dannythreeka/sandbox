@@ -69,5 +69,10 @@ export function portById(id: string): PortDef {
   return port;
 }
 
+/** 以座標反查港口（自由航行點到港口格時視同指定該港為目的地） */
+export function portAtCoord(coord: { col: number; row: number }): PortDef | undefined {
+  return PORTS.find((p) => p.coord.col === coord.col && p.coord.row === coord.row);
+}
+
 /** 玩家起始港（琥珀灣首都） */
 export const HOME_PORT_ID = "port.amber_gulf.aurelia";

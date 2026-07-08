@@ -48,6 +48,8 @@ export const BALANCE = {
   // ── 補給消耗（M2 起使用）──
   FOOD_PER_CREW_PER_TICK: 1,
   WATER_PER_CREW_PER_TICK: 1,
+  /** 出港自動補給的單價（每 1 糧或 1 水；M10 起使用） */
+  SUPPLY_GOLD_PER_UNIT: 2,
 
   // ── 航海士（M4 起使用，docs/01 §4.5）──
   /** 每 30 tick 結算一次薪資 */

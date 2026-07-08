@@ -7,9 +7,12 @@ import type { Socket } from "socket.io-client";
 import {
   axialToOddr,
   BALANCE,
+  ERROR_MESSAGES_ZH_TW,
+  portById,
   WS_EVENTS,
   type BattleStateView,
   type FleetTickDelta,
+  type OffsetCoord,
   type RouteView,
   type ServerArrivalPayload,
   type ServerBattleEndPayload,
@@ -63,6 +66,9 @@ export default function PlayPage() {
   const socketRef = useRef<Socket | null>(null);
   const tickRef = useRef<number>(0);
   const inFlightRef = useRef(false);
+  // tick delta 依艦隊 id 過濾（不能拿 fleets[0]：清單只含「該 tick 有航行」的艦隊，
+  // 順序與歸屬都不保證是玩家自己的）
+  const playerFleetIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!getAccessToken()) {
@@ -93,14 +99,20 @@ export default function PlayPage() {
       inFlightRef.current = false;
       setTick(payload.tick);
       tickRef.current = payload.tick;
-      const mine = payload.fleets[0]; // M2：玩家僅一支艦隊
+      const mine = playerFleetIdRef.current
+        ? payload.fleets.find((f) => f.id === playerFleetIdRef.current)
+        : payload.fleets[0];
       if (mine) {
         setFleetDelta(mine);
-        if (mine.activity === "DOCKED") setRoute(null);
+        if (mine.activity === "DOCKED" || mine.activity === "ANCHORED") setRoute(null);
       }
+      if (payload.notices.length > 0) setNotice(payload.notices.join(" "));
+      // tick 有成功推進，「世界正在推進中」這類瞬時壅塞錯誤即已過期，自動清掉
+      setError((prev) => (prev === ERROR_MESSAGES_ZH_TW.WORLD_BUSY ? null : prev));
     });
     socket.on(WS_EVENTS.SERVER_ARRIVAL, (payload: ServerArrivalPayload) => {
-      setNotice(`艦隊已抵達 ${payload.portId}`);
+      if (playerFleetIdRef.current && payload.fleetId !== playerFleetIdRef.current) return;
+      setNotice(`艦隊已抵達 ${portById(payload.portId).name}`);
       api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
     });
     socket.on(WS_EVENTS.SERVER_EVENT, (payload: ServerEventPayload) => {
@@ -147,6 +159,7 @@ export default function PlayPage() {
   }, [worldId, router]);
 
   const fleet = snapshot?.fleets[0];
+  playerFleetIdRef.current = fleet?.id ?? playerFleetIdRef.current;
   const activity = fleetDelta?.activity ?? fleet?.activity;
   const pos = fleetDelta?.pos ?? fleet?.pos;
   const food = fleetDelta?.food ?? fleet?.food ?? 0;
@@ -175,12 +188,40 @@ export default function PlayPage() {
     return () => clearInterval(timer);
   }, [activity, speedIdx, worldId, battleId, victory]);
 
-  async function handlePortClick(portId: string) {
-    if (!fleet || activity === "IN_BATTLE" || activity === "EXPLORING") return;
+  /**
+   * 樂觀更新艦隊活動狀態。世界剛建立、尚未收到任何 server:tick 時 fleetDelta
+   * 仍是 null，必須以目前快照補滿欄位，否則更新會整個變成 no-op，
+   * 玩家會卡在「已出港」但畫面仍顯示停靠中、tick 節奏器也不會啟動。
+   */
+  function seedFleetActivity(
+    nextActivity: FleetTickDelta["activity"],
+    supplies?: { food: number; water: number },
+  ) {
+    if (!fleet) return;
+    setFleetDelta((prev) => ({
+      id: fleet.id,
+      pos: prev?.pos ?? fleet.pos,
+      food: prev?.food ?? fleet.food,
+      water: prev?.water ?? fleet.water,
+      morale: prev?.morale ?? fleet.morale,
+      ...prev,
+      activity: nextActivity,
+      dockedPortId: null,
+      ...(supplies ?? {}),
+    }));
+  }
+
+  /** 點擊海圖設定航向（港口或任意海面）；海上下錨中伺服器會原子地收錨續航。 */
+  async function handleMapTarget(dest: { targetPortId: string } | { target: OffsetCoord }) {
+    if (!fleet || gameEnded || activity === "IN_BATTLE" || activity === "EXPLORING") return;
     setError(null);
     try {
-      const r = await api.setRoute(worldId, fleet.id, portId);
+      const r = await api.setRoute(worldId, fleet.id, dest);
       setRoute(r);
+      if (activity === "ANCHORED") {
+        seedFleetActivity("SAILING");
+        setNotice(null);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "設定航線失敗");
     }
@@ -190,25 +231,29 @@ export default function PlayPage() {
     if (!fleet) return;
     setError(null);
     try {
-      await api.depart(worldId, fleet.id);
-      // 世界剛建立、尚未收到任何 server:tick 時 fleetDelta 仍是 null，
-      // 這裡必須以目前快照補滿欄位，否則樂觀更新會整個變成 no-op，
-      // 玩家會卡在「已出港」但畫面仍顯示停靠中、tick 節奏器也不會啟動。
-      setFleetDelta((prev) => ({
-        id: fleet.id,
-        pos: prev?.pos ?? fleet.pos,
-        food: prev?.food ?? fleet.food,
-        water: prev?.water ?? fleet.water,
-        morale: prev?.morale ?? fleet.morale,
-        ...prev,
-        activity: "SAILING",
-        dockedPortId: null,
-      }));
-      setNotice(null);
+      const r = await api.depart(worldId, fleet.id);
+      seedFleetActivity("SAILING", {
+        food: fleet.food + r.resupplied.food,
+        water: fleet.water + r.resupplied.water,
+      });
+      setNotice(
+        r.resupplied.cost > 0
+          ? `出港前完成補給：糧 +${r.resupplied.food}、水 +${r.resupplied.water}，花費 ${r.resupplied.cost} 金。`
+          : null,
+      );
+      // 更新商會資金顯示
+      api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "出港失敗");
     }
   }
+
+  /** 目的地顯示名稱：港口用中文名，自由航行顯示海域座標 */
+  const destinationLabel = route
+    ? route.targetPortId
+      ? portById(route.targetPortId).name
+      : `海域 (${route.waypoints[route.waypoints.length - 1].col}, ${route.waypoints[route.waypoints.length - 1].row})`
+    : null;
 
   return (
     <main className="space-y-4">
@@ -273,9 +318,11 @@ export default function PlayPage() {
 
           <SeaMap
             fleetPos={fleetOffsetPos}
+            sailing={activity === "SAILING"}
             routeWaypoints={route?.waypoints ?? null}
             visitedPortIds={visitedPortIds}
-            onPortClick={handlePortClick}
+            onPortClick={(portId) => void handleMapTarget({ targetPortId: portId })}
+            onSeaClick={(coord) => void handleMapTarget({ target: coord })}
           />
 
           <section className="panel flex flex-wrap items-center gap-4">
@@ -283,11 +330,11 @@ export default function PlayPage() {
               <>
                 <p className="text-slate-200">
                   停靠於 <span className="font-medium text-gold">{currentPort.name}</span>
-                  ——點擊海圖上的港口標記設定航線。
+                  ——點擊海圖上的港口或任一海面設定航線。
                 </p>
-                {route && (
+                {route && destinationLabel && (
                   <button className="btn" onClick={handleDepart}>
-                    出港（前往 {route.targetPortId}）
+                    出港（前往 {destinationLabel}）
                   </button>
                 )}
               </>
@@ -304,10 +351,16 @@ export default function PlayPage() {
                     {s.label}
                   </button>
                 ))}
-                {route?.targetPortId && (
-                  <span className="text-sm text-slate-400">航向 {route.targetPortId}</span>
+                {destinationLabel && (
+                  <span className="text-sm text-slate-400">航向 {destinationLabel}</span>
                 )}
               </div>
+            )}
+            {activity === "ANCHORED" && (
+              <p className="text-slate-200">
+                艦隊在海上<span className="font-medium text-gold">下錨中</span>
+                ——點擊海面或港口設定新航向（自動收錨啟航），或探索周邊海域。
+              </p>
             )}
             <ExplorationPanel
               worldId={worldId}

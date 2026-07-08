@@ -22,3 +22,25 @@ export function hexCorners(center: { x: number; y: number }): number[] {
   }
   return points;
 }
+
+/**
+ * 像素座標反查六角格（點擊海面設定航向用）。
+ * 先用行/列近似值縮小範圍，再取候選格中中心距離最近者，避免六角邊界的取整誤差。
+ */
+export function pixelToHex(p: { x: number; y: number }): OffsetCoord {
+  const rowApprox = Math.round(p.y / HEX_VERT_SPACING);
+  let best: OffsetCoord = { col: 0, row: 0 };
+  let bestD = Infinity;
+  for (let row = rowApprox - 1; row <= rowApprox + 1; row++) {
+    const colApprox = Math.round(p.x / HEX_WIDTH - 0.5 * (row & 1));
+    for (let col = colApprox - 1; col <= colApprox + 1; col++) {
+      const center = hexToPixel({ col, row });
+      const d = (center.x - p.x) ** 2 + (center.y - p.y) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = { col, row };
+      }
+    }
+  }
+  return best;
+}

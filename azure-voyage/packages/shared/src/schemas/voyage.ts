@@ -1,8 +1,14 @@
 import { z } from "zod";
 
-export const SetRouteInputSchema = z.object({
-  targetPortId: z.string().min(1),
-});
+export const SetRouteInputSchema = z
+  .object({
+    targetPortId: z.string().min(1).optional(),
+    /** 自由航行目標海格（odd-r offset 座標）；與 targetPortId 二擇一 */
+    target: z.object({ col: z.number().int(), row: z.number().int() }).optional(),
+  })
+  .refine((v) => (v.targetPortId !== undefined) !== (v.target !== undefined), {
+    message: "targetPortId 與 target 必須恰好提供一個",
+  });
 export type SetRouteInput = z.infer<typeof SetRouteInputSchema>;
 
 export const RouteViewSchema = z.object({
