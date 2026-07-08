@@ -27,6 +27,7 @@
 | 7 | [07-frontend.md](docs/07-frontend.md) | 前端架構：Next.js 結構、狀態管理、地圖渲染 | 前端 |
 | 8 | [08-project-structure.md](docs/08-project-structure.md) | Monorepo 目錄結構、共用套件、開發工具鏈 | 所有人 |
 | 9 | [09-roadmap.md](docs/09-roadmap.md) | 實作路線圖：M0–M9 里程碑，每步的驗收標準（實際執行記錄見文件頂端） | 實作 AI / 開發者 |
+| 10 | [10-voyage-experience-plan.md](docs/10-voyage-experience-plan.md) | 航海體驗強化計畫（M11–M14）：風向、鍵盤操舵、港口過場、天氣視覺——待執行規格 | 實作 AI / 開發者 |
 
 ## 快速開始
 
