@@ -1,0 +1,13 @@
+{
+  "name": "@azure-voyage/artgen",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node generate.mjs",
+    "dry-run": "node generate.mjs --dry-run"
+  },
+  "dependencies": {
+    "sharp": "^0.33.5"
+  }
+}
