@@ -128,3 +128,28 @@ P0 合計 **43 張**（港口先做 7 張時為 **29 張**）——一次生圖�
    D. 水彩手繪繪本風（柔和、辨識度高）
 2. **產圖工作流**：API 模式（提供 key）／訂單表模式（Manus/豆包人工）／
    公有領域館藏混搭（人物用古典肖像畫、UI 裝飾用古海圖掃描）／混用。
+
+## 執行記錄（M15–M16 落地後回填，沿用 docs/09/10 慣例）
+
+- **風格方向**：確定選 **A．古典油畫×羊皮紙**。M15 的 UI 主題（襯線標題字、木質面板
+  ＋噪點材質、金線雙框、羅盤）已按此方向落地；`tools/artgen/manifest.mjs` 的
+  `STYLE_PREFIX` 常數即 A 方向的 prompt 前綴，全部資產共用。
+- **產圖工作流**：確定選 **API 模式，使用 Google AI Studio 的 Gemini API key**
+  （`generativelanguage.googleapis.com`）。已於沙盒內測過連通性，非政策阻擋
+  （未帶 key 時回應的是 Google 自己的 `PERMISSION_DENIED`，不是 proxy 拒絕頁）。
+  `tools/artgen/generate.mjs` 動態探測帳號可用模型（優先 Imagen `:predict`，
+  否則走支援圖片輸出的 Gemini `:generateContent`），不寫死特定型號名稱。
+- **資產 id 慣例**（M15 程式已鎖定，與 §2 表格原始命名略有差異，以此為準）：
+  - 港口場景：`port-scene/<regionId 去掉 "region." 前綴>-s<port.size>.webp`
+    （P0 每海域先做 `s2` 一張代表圖共用；同海域的其他規模港口暫沿用同張或
+    回退剪影，需要更細緻覆蓋時再補 `s1`/`s3`）
+  - 航海士立繪：`portrait/<officer.portrait 去掉 "portrait." 前綴>.webp`
+    （用的是 content 既有欄位值，不是 officer template 的 `key`）
+  - 船級側視圖：`ship/<shipClassId 去掉 "ship." 前綴>.webp`——
+    M16 新增整合點：`TavernShipyardPanel` 的艦隊船清單與建造船級選單預覽，
+    先前 §3 規劃時船圖尚無任何 UI 整合點，此次一併補上。
+- **P0 訂單表**：`tools/artgen/manifest.mjs`，29 筆（7 港口場景＋12 航海士＋10 船級），
+  完整 prompt 已由 content 資料（`regions.ts`／`officersPool.ts`／`shipClasses.ts`）
+  展開好，`node tools/artgen/generate.mjs --dry-run` 可預覽不耗配額。
+- **待辦**：實際生圖批次尚未執行（等待使用者提供 `GEMINI_API_KEY`），執行後的產出
+  webp 與任何 prompt 調整會在下一個 PR 記錄。
