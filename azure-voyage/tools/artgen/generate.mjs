@@ -41,28 +41,47 @@ async function listModels(apiKey) {
   return body.models ?? [];
 }
 
-/** 動態挑模型：優先 Imagen（:predict），其次支援圖片輸出的 Gemini（:generateContent）。 */
+/**
+ * 動態挑模型：優先支援圖片輸出的 Gemini（:generateContent）——Imagen 的 :predict
+ * 目前只開放付費方案（實測 HTTP 400 "Imagen 3 is only available on paid plans"），
+ * 免費 API key 一律走不到。非 preview 的穩定型號優先，避免 preview 配額/穩定性問題。
+ */
 function pickModel(models) {
-  const imagen = models.find(
-    (m) => /imagen/i.test(m.name) && (m.supportedGenerationMethods ?? []).includes("predict"),
-  );
-  if (imagen) return { name: imagen.name, kind: "imagen" };
+  const byName = (name) => models.find((m) => m.name === `models/${name}`);
+  const preferredGemini = [
+    "gemini-2.5-flash-image",
+    "gemini-3.1-flash-lite-image",
+    "gemini-3-pro-image",
+    "gemini-3.1-flash-image",
+  ];
+  for (const name of preferredGemini) {
+    const m = byName(name);
+    if (m) return { name: m.name, kind: "gemini" };
+  }
 
   const geminiImage = models.find(
     (m) => /image/i.test(m.name) && (m.supportedGenerationMethods ?? []).includes("generateContent"),
   );
   if (geminiImage) return { name: geminiImage.name, kind: "gemini" };
 
+  const imagen = models.find(
+    (m) => /imagen/i.test(m.name) && (m.supportedGenerationMethods ?? []).includes("predict"),
+  );
+  if (imagen) return { name: imagen.name, kind: "imagen" };
+
   throw new Error("no image-capable model found in this API key's model list");
 }
 
 async function callImagen(apiKey, modelName, prompt) {
+  // 注意：目前 Imagen 版本已不接受 parameters.negativePrompt（HTTP 400
+  // INVALID_ARGUMENT: "Setting negativePrompt is no longer supported."）——
+  // 改把負面提示併進 prompt 文字本身，跟 Gemini 路徑一致的做法。
   const res = await fetch(`${API_BASE}/${modelName}:predict?key=${apiKey}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      instances: [{ prompt }],
-      parameters: { sampleCount: 1, negativePrompt: NEGATIVE_PROMPT },
+      instances: [{ prompt: `${prompt}. Avoid: ${NEGATIVE_PROMPT}.` }],
+      parameters: { sampleCount: 1 },
     }),
   });
   if (!res.ok) throw new Error(`imagen predict failed: HTTP ${res.status} ${await res.text()}`);
