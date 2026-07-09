@@ -18,12 +18,26 @@ import {
 import { hexCorners, hexToPixel, pixelToHex } from "./hexPixel";
 
 const TERRAIN_COLOR: Record<string, number> = {
-  [TERRAIN.DEEP]: 0x0b2e4d,
-  [TERRAIN.SHALLOW]: 0x1f6fa8,
+  [TERRAIN.DEEP]: 0x0c3050,
+  [TERRAIN.SHALLOW]: 0x1d5f92,
   [TERRAIN.REEF]: 0x8a6d3b,
-  [TERRAIN.LAND]: 0x2e5d3f,
+  [TERRAIN.LAND]: 0x35543a,
   [TERRAIN.PORT]: 0xd9a441,
 };
+/** M15 古典海圖風：每種地形的抖動替代色（約 1/4 格），打破整片平色的塑膠感 */
+const TERRAIN_COLOR_ALT: Record<string, number> = {
+  [TERRAIN.DEEP]: 0x0e3558,
+  [TERRAIN.SHALLOW]: 0x216aa0,
+  [TERRAIN.REEF]: 0x7d6236,
+  [TERRAIN.LAND]: 0x2e4a34,
+  [TERRAIN.PORT]: 0xd9a441,
+};
+/**
+ * hex 邊 e（連接 hexCorners 的第 e 與 e+1 個頂點）對應的鄰居方位。
+ * pointy-top 頂點自 -30° 起每 60° 一個（螢幕座標 y 向下），邊中點依序落在
+ * 0°/60°/120°/180°/240°/300° → 東、東南、西南、西、西北、東北。
+ */
+const EDGE_TO_DIR = [0, 5, 4, 3, 2, 1] as const;
 
 /** 航跡最長保留時間（毫秒）；點與點之間的取樣間隔 */
 const TRAIL_TTL_MS = 2600;
@@ -84,6 +98,14 @@ function buildShipSprite(): Container {
     ship.addChild(sail);
   }
   return ship;
+}
+
+/** 港口標記外環（visited 狀態變化時重繪） */
+function drawPortRing(g: Graphics, visited: boolean): void {
+  g.clear()
+    .circle(0, 0, 5.5)
+    .fill({ color: 0x08111f, alpha: 0.6 })
+    .stroke({ width: 1.4, color: visited ? 0xd9a441 : 0x6b7280, alpha: 0.95 });
 }
 
 /** 手繪虛線折線（pixi 無內建 dash） */
@@ -148,7 +170,9 @@ export function SeaMap({
   const trailGfxRef = useRef<Graphics | null>(null);
   const routeGfxRef = useRef<Graphics | null>(null);
   const destGfxRef = useRef<Graphics | null>(null);
-  const portVisualsRef = useRef<Map<string, { marker: Graphics; label: Text }>>(new Map());
+  const portVisualsRef = useRef<Map<string, { marker: Graphics; anchorGlyph: Text; label: Text }>>(
+    new Map(),
+  );
   const followRef = useRef(true);
   const fleetPosRef = useRef(fleetPos);
   fleetPosRef.current = fleetPos;
@@ -219,16 +243,38 @@ export function SeaMap({
         worldRef.current = world;
         app.stage.addChild(world);
 
-        // ── 地形（一次性烘焙）──
+        // ── 地形（一次性烘焙；M15 古典海圖風：雙色抖動＋水面細格線）──
         const terrain = new Graphics();
         for (let row = 0; row < HEXMAP.height; row++) {
           for (let col = 0; col < HEXMAP.width; col++) {
             const t = terrainAt(HEXMAP, { col, row });
             const center = hexToPixel({ col, row });
-            terrain.poly(hexCorners(center)).fill(TERRAIN_COLOR[t]);
+            const alt = ((col * 7 + row * 13) & 3) === 0; // 確定性抖動：不用亂數，重繪必一致
+            terrain.poly(hexCorners(center)).fill(alt ? TERRAIN_COLOR_ALT[t] : TERRAIN_COLOR[t]);
+            if (isNavigable(t)) {
+              terrain.poly(hexCorners(center)).stroke({ width: 0.4, color: 0x08111f, alpha: 0.16 });
+            }
           }
         }
         world.addChild(terrain);
+
+        // ── 海岸線描邊（M15）：陸地格朝水域的每一條邊畫砂色筆觸，
+        // 大陸輪廓立刻有手繪海圖的清晰感 ──
+        const coast = new Graphics();
+        for (let row = 0; row < HEXMAP.height; row++) {
+          for (let col = 0; col < HEXMAP.width; col++) {
+            if (terrainAt(HEXMAP, { col, row }) !== TERRAIN.LAND) continue;
+            const corners = hexCorners(hexToPixel({ col, row }));
+            for (let e = 0; e < 6; e++) {
+              const n = hexNeighborInDirection({ col, row }, EDGE_TO_DIR[e]);
+              if (!inBounds(HEXMAP, n) || !isNavigable(terrainAt(HEXMAP, n))) continue;
+              const e2 = ((e + 1) % 6) * 2;
+              coast.moveTo(corners[e * 2], corners[e * 2 + 1]).lineTo(corners[e2], corners[e2 + 1]);
+            }
+          }
+        }
+        coast.stroke({ width: 1.2, color: 0xc8b98a, alpha: 0.75 });
+        world.addChild(coast);
 
         // ── 航跡（畫在航線與港口之下）──
         const trailGfx = new Graphics();
@@ -248,14 +294,12 @@ export function SeaMap({
         destGfxRef.current = destGfx;
         world.addChild(destGfx);
 
-        // ── 港口標記 + 名稱標籤 ──
+        // ── 港口標記（金環＋錨徽）+ 名稱標籤 ──
         for (const port of PORTS) {
           const center = hexToPixel(port.coord);
           const visited = visitedRef.current.has(port.id);
-          const marker = new Graphics()
-            .circle(0, 0, 4)
-            .fill(visited ? 0xffe08a : 0x6b7280)
-            .stroke({ width: 1, color: 0x000000, alpha: 0.4 });
+          const marker = new Graphics();
+          drawPortRing(marker, visited);
           marker.position.set(center.x, center.y);
           marker.eventMode = "static";
           marker.cursor = "pointer";
@@ -265,22 +309,32 @@ export function SeaMap({
           });
           world.addChild(marker);
 
+          const anchorGlyph = new Text({
+            text: "⚓",
+            style: { fontSize: 6.5, fill: visited ? 0xffe08a : 0x9aa4b2 },
+            resolution: 3,
+          });
+          anchorGlyph.anchor.set(0.5);
+          anchorGlyph.position.set(center.x, center.y);
+          anchorGlyph.eventMode = "none";
+          world.addChild(anchorGlyph);
+
           const label = new Text({
             text: port.name,
             style: {
-              fontFamily: "system-ui, sans-serif",
+              fontFamily: "Palatino, Georgia, 'Noto Serif TC', serif",
               fontSize: 9,
-              fill: 0xdbe7f3,
+              fill: 0xe8dcc0,
               stroke: { color: 0x08111f, width: 2 },
             },
             resolution: 2,
           });
           label.anchor.set(0.5, 1);
-          label.position.set(center.x, center.y - 6);
+          label.position.set(center.x, center.y - 7);
           label.alpha = visited ? 0.95 : 0.5;
           world.addChild(label);
 
-          portVisualsRef.current.set(port.id, { marker, label });
+          portVisualsRef.current.set(port.id, { marker, anchorGlyph, label });
         }
 
         // ── M14 天氣視覺（世界座標圖層：隨地圖平移縮放）──
@@ -408,6 +462,36 @@ export function SeaMap({
 
         let fogAlpha = 0;
         let stormTintAlpha = 0;
+
+        // ── M15 地圖裝飾（螢幕座標）：雙金線外框 + 風向羅盤 ──
+        const frame = new Graphics();
+        frame.eventMode = "none";
+        app.stage.addChild(frame);
+        let frameW = 0;
+        let frameH = 0;
+
+        const compass = new Container();
+        compass.eventMode = "none";
+        const compassBase = new Graphics()
+          .circle(0, 0, 26)
+          .fill({ color: 0x08111f, alpha: 0.55 })
+          .stroke({ width: 1.5, color: 0xd9a441, alpha: 0.8 })
+          .circle(0, 0, 20)
+          .stroke({ width: 0.6, color: 0xd9a441, alpha: 0.45 });
+        // 八芒星刻度（古典羅盤的星芒）
+        for (let i = 0; i < 8; i++) {
+          const a = (Math.PI / 4) * i;
+          const len = i % 2 === 0 ? 18 : 11;
+          compassBase.moveTo(0, 0).lineTo(Math.cos(a) * len, Math.sin(a) * len);
+        }
+        compassBase.stroke({ width: 0.8, color: 0x9fc3e0, alpha: 0.55 });
+        compass.addChild(compassBase);
+        const windNeedle = new Graphics()
+          .poly([15, 0, -6, -4.5, -2, 0, -6, 4.5])
+          .fill(0xffe08a)
+          .stroke({ width: 0.6, color: 0x7a5230 });
+        compass.addChild(windNeedle);
+        app.stage.addChild(compass);
 
         // ── 主迴圈：船隻內插移動、轉向、航跡、目的地脈動、鏡頭跟隨 ──
         app.ticker.add(() => {
@@ -590,6 +674,29 @@ export function SeaMap({
               app.stage.position.set(0, 0);
             }
           }
+
+          // M15：地圖外框（尺寸變動時重畫）與羅盤（指針平滑轉向當日風向）
+          if (app.screen.width !== frameW || app.screen.height !== frameH) {
+            frameW = app.screen.width;
+            frameH = app.screen.height;
+            frame
+              .clear()
+              .rect(3, 3, frameW - 6, frameH - 6)
+              .stroke({ width: 1.5, color: 0xd9a441, alpha: 0.45 })
+              .rect(7, 7, frameW - 14, frameH - 14)
+              .stroke({ width: 0.6, color: 0xd9a441, alpha: 0.25 });
+          }
+          compass.position.set(app.screen.width - 46, app.screen.height - 46);
+          const windNow = windDirRef.current;
+          compass.visible = windNow !== null;
+          if (windNow !== null) {
+            // 與 HUD 箭頭同一約定：dir 0=東、逆時針；螢幕 y 向下故取負角
+            const targetRot = (-Math.PI / 3) * windNow;
+            let cd = targetRot - windNeedle.rotation;
+            while (cd > Math.PI) cd -= 2 * Math.PI;
+            while (cd < -Math.PI) cd += 2 * Math.PI;
+            windNeedle.rotation += cd * Math.min(1, dt * 5);
+          }
         });
       });
 
@@ -640,11 +747,8 @@ export function SeaMap({
       const vis = portVisualsRef.current.get(port.id);
       if (!vis) continue;
       const visited = visitedPortIds.has(port.id);
-      vis.marker
-        .clear()
-        .circle(0, 0, 4)
-        .fill(visited ? 0xffe08a : 0x6b7280)
-        .stroke({ width: 1, color: 0x000000, alpha: 0.4 });
+      drawPortRing(vis.marker, visited);
+      vis.anchorGlyph.style.fill = visited ? 0xffe08a : 0x9aa4b2;
       vis.label.alpha = visited ? 0.95 : 0.5;
     }
   }, [visitedPortIds]);

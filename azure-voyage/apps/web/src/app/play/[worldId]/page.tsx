@@ -43,6 +43,7 @@ import { ExplorationPanel } from "@/game/ExplorationPanel";
 import { DiscoveryPanel } from "@/game/DiscoveryPanel";
 import { InfluencePanel } from "@/game/InfluencePanel";
 import { PortCutscene, type CutsceneState } from "@/game/PortCutscene";
+import { PortBanner } from "@/game/PortBanner";
 
 /** M13：使用者選過「不再顯示這個動畫」後永久跳過過場（不影響其他玩家/裝置） */
 const CUTSCENE_SKIP_KEY = "azure-voyage:skip-cutscenes";
@@ -637,6 +638,8 @@ export default function PlayPage() {
             weather={weather}
             stormFlashTrigger={stormFlashTrigger}
           />
+
+          {activity === "DOCKED" && currentPort && <PortBanner portId={currentPort.portId} />}
 
           <section className="panel flex flex-wrap items-center gap-4">
             {activity === "DOCKED" && currentPort && (

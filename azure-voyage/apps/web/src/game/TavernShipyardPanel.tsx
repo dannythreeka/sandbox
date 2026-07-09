@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { OFFICER_ROLES, SHIP_CLASSES, type FleetView, type TavernOfficerView } from "@azure-voyage/shared";
 import { officerApi } from "@/lib/officerApi";
+import { GameArt } from "./GameArt";
 
 const ROLE_LABELS: Record<string, string> = {
   FIRST_MATE: "副官",
@@ -11,6 +12,23 @@ const ROLE_LABELS: Record<string, string> = {
   PURSER: "會計長",
   LOOKOUT: "瞭望員",
 };
+
+/** 航海士立繪縮圖：有 `art/portrait/<key>.webp` 就顯示，否則首字暖金頭像框（M15）。 */
+function OfficerAvatar({ portrait, name }: { portrait: string; name: string }) {
+  return (
+    <GameArt
+      category="portrait"
+      id={portrait.replace(/^portrait\./, "")}
+      alt={name}
+      className="h-12 w-10 shrink-0 rounded border border-gold/40 object-cover"
+      fallback={
+        <span className="flex h-12 w-10 shrink-0 items-center justify-center rounded border border-gold/40 bg-abyss font-serif text-lg text-gold">
+          {name.charAt(0)}
+        </span>
+      }
+    />
+  );
+}
 
 interface Props {
   worldId: string;
@@ -98,9 +116,12 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
         ) : (
           <ul className="space-y-2">
             {tavern.map((o) => (
-              <li key={o.id} className="flex items-center justify-between rounded-md border border-foam/20 p-2 text-sm">
-                <span>
-                  {o.name} · 統率{o.stats.lead} 航海{o.stats.nav} 戰鬥{o.stats.combat} 商才{o.stats.trade} 學識
+              <li key={o.id} className="flex items-center gap-3 rounded-md border border-foam/20 p-2 text-sm">
+                <OfficerAvatar portrait={o.portrait} name={o.name} />
+                <span className="flex-1">
+                  <span className="font-serif text-base text-slate-100">{o.name}</span>
+                  <br />
+                  統率{o.stats.lead} 航海{o.stats.nav} 戰鬥{o.stats.combat} 商才{o.stats.trade} 學識
                   {o.stats.lore} · 薪 {o.salary}
                 </span>
                 <button className="btn-ghost" onClick={() => recruit(o.id)}>
@@ -114,8 +135,9 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
         <h4 className="mb-2 mt-4 font-medium text-slate-200">艦隊航海士</h4>
         <ul className="space-y-2">
           {fleet.officers.map((o) => (
-            <li key={o.id} className="flex items-center justify-between rounded-md border border-foam/20 p-2 text-sm">
-              <span>
+            <li key={o.id} className="flex items-center gap-3 rounded-md border border-foam/20 p-2 text-sm">
+              <OfficerAvatar portrait={o.portrait} name={o.name} />
+              <span className="flex-1">
                 {o.name}（忠誠 {o.loyalty}）
               </span>
               <select
