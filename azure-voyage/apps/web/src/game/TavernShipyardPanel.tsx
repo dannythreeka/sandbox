@@ -30,6 +30,23 @@ function OfficerAvatar({ portrait, name }: { portrait: string; name: string }) {
   );
 }
 
+/** 船級縮圖：有 `art/ship/<classId>.webp` 就顯示，否則錨形指標佔位（M16）。 */
+function ShipClassThumb({ shipClassId, name }: { shipClassId: string; name: string }) {
+  return (
+    <GameArt
+      category="ship"
+      id={shipClassId.replace(/^ship\./, "")}
+      alt={name}
+      className="h-12 w-16 shrink-0 rounded border border-gold/40 object-cover"
+      fallback={
+        <span className="flex h-12 w-16 shrink-0 items-center justify-center rounded border border-gold/40 bg-abyss text-lg text-gold">
+          ⚓
+        </span>
+      }
+    />
+  );
+}
+
 interface Props {
   worldId: string;
   portId: string;
@@ -161,8 +178,9 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
         <h3 className="mb-2 text-lg font-semibold text-foam">造船廠</h3>
         <ul className="mb-4 space-y-2">
           {fleet.ships.map((s) => (
-            <li key={s.id} className="flex items-center justify-between rounded-md border border-foam/20 p-2 text-sm">
-              <span>
+            <li key={s.id} className="flex items-center gap-3 rounded-md border border-foam/20 p-2 text-sm">
+              <ShipClassThumb shipClassId={s.shipClassId} name={s.name} />
+              <span className="flex-1">
                 {s.isFlagship ? "⚓ " : ""}
                 {s.name} · 耐久 {s.hull}
               </span>
@@ -178,6 +196,10 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
           ))}
         </ul>
         <div className="flex flex-wrap items-end gap-2">
+          <ShipClassThumb
+            shipClassId={shipClassId}
+            name={SHIP_CLASSES.find((sc) => sc.id === shipClassId)?.name ?? shipClassId}
+          />
           <select className="input w-40" value={shipClassId} onChange={(e) => setShipClassId(e.target.value)}>
             {SHIP_CLASSES.map((sc) => (
               <option key={sc.id} value={sc.id}>
