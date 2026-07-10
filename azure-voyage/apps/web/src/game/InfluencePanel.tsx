@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { NPC_GUILD_TEMPLATES } from "@azure-voyage/shared";
+import { NPC_GUILD_TEMPLATES, type NpcGuildPublicView } from "@azure-voyage/shared";
 import { api, ApiError } from "@/lib/api";
 import { GameArt } from "./GameArt";
 
@@ -9,6 +9,8 @@ interface Props {
   worldId: string;
   portId: string;
   gold: number;
+  /** M19：查找 PERSONA 補全的人設描述，用商會名稱比對；找不到就沒有 tooltip 可看。 */
+  npcGuilds: NpcGuildPublicView[];
   onInvested: () => void;
 }
 
@@ -19,7 +21,7 @@ function guildArtId(guildName: string): string | null {
 }
 
 /** 港口影響力投資面板（docs/01 §4.3；docs/05 §6）。 */
-export function InfluencePanel({ worldId, portId, gold, onInvested }: Props) {
+export function InfluencePanel({ worldId, portId, gold, npcGuilds, onInvested }: Props) {
   const [detail, setDetail] = useState<Awaited<ReturnType<typeof api.getPort>> | null>(null);
   const [amount, setAmount] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -63,8 +65,9 @@ export function InfluencePanel({ worldId, portId, gold, onInvested }: Props) {
       <ul className="space-y-1 text-sm">
         {detail.influences.map((inf) => {
           const artId = guildArtId(inf.guildName);
+          const persona = npcGuilds.find((g) => g.name === inf.guildName)?.persona;
           return (
-            <li key={inf.guildId} className="flex items-center gap-2">
+            <li key={inf.guildId} className="flex items-center gap-2" title={persona?.greeting}>
               {artId ? (
                 <GameArt
                   category="portrait"
@@ -81,7 +84,10 @@ export function InfluencePanel({ worldId, portId, gold, onInvested }: Props) {
               ) : (
                 <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: inf.color }} />
               )}
-              <span className="flex-1 text-slate-300">{inf.guildName}</span>
+              <span className="flex-1 text-slate-300">
+                {inf.guildName}
+                {persona && <span className="ml-1 text-xs text-foam/60">· {persona.description}</span>}
+              </span>
               <span className="font-mono text-gold">{inf.share.toFixed(1)}%</span>
             </li>
           );

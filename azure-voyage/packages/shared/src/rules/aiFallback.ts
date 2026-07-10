@@ -5,7 +5,7 @@
  */
 import { BALANCE } from "../content/constants";
 import { Rng } from "./rng";
-import type { AiEventProposal, NpcGoalKind, NpcStrategy } from "../schemas/ai";
+import type { AiEventProposal, NpcGoalKind, NpcPersonaGen, NpcStrategy, OfficerPersonaGen } from "../schemas/ai";
 
 const FALLBACK_GOAL_KINDS: readonly NpcGoalKind[] = ["EXPAND_INFLUENCE", "CONSOLIDATE", "INVEST_PORT"];
 
@@ -35,4 +35,57 @@ export function fallbackRumorEvent(input: { seed: number; portName: string }): A
     goldReward: rng.int(50, 300),
     fameReward: rng.int(1, 5),
   };
+}
+
+const NPC_PERSONA_TEMPLATES: Record<string, { description: (name: string) => string; greeting: (name: string) => string }> = {
+  DEFENSIVE_TRADER: {
+    description: (name) => `${name}行事謹慎保守，寧可少賺也不願冒進，靠穩紮穩打的航線經營站穩腳跟。`,
+    greeting: (name) => `「${name}向來不打沒把握的仗，你若是來談生意，我們洗耳恭聽。」`,
+  },
+  RAIDER_MERCHANT: {
+    description: (name) => `${name}遊走在商賈與海盜的灰色地帶，機會來時毫不猶豫，風評毀譽參半。`,
+    greeting: (name) => `「${name}可不是什麼善男信女，不過只要利益夠大，什麼都好談。」`,
+  },
+  FINANCIER: {
+    description: (name) => `${name}擅長金融操作，靠放貸與投資編織出一張橫跨數個港口的利益網。`,
+    greeting: (name) => `「歡迎光臨，${name}的大門永遠為有價值的合作對象敞開。」`,
+  },
+  ROUTE_MONOPOLIST: {
+    description: (name) => `${name}長年壟斷幾條關鍵航線，對任何想分一杯羹的新面孔都保持高度警覺。`,
+    greeting: (name) => `「這條航線是${name}打下的江山，想通行，先說說你的來意。」`,
+  },
+  EXPLORER_TRADER: {
+    description: (name) => `${name}熱衷於開拓未知海域，商隊裡總帶著幾份還沒繪完的海圖。`,
+    greeting: (name) => `「${name}的船隊剛從外海回來，你猜我們又發現了什麼？」`,
+  },
+};
+
+/** NPC 商會人設 fallback：依 archetype 決定性挑對應模板，AI 停用/失敗時使用。 */
+export function fallbackNpcPersonaGen(input: { guildName: string; archetype: string }): NpcPersonaGen {
+  const template = NPC_PERSONA_TEMPLATES[input.archetype] ?? NPC_PERSONA_TEMPLATES.DEFENSIVE_TRADER;
+  return {
+    description: template.description(input.guildName),
+    greeting: template.greeting(input.guildName),
+  };
+}
+
+const OFFICER_PERSONA_TEMPLATES = [
+  (name: string) => ({
+    description: `${name}話不多，但只要開口，句句都切中要害，是艦隊裡沉默卻可靠的存在。`,
+    greeting: `「${name}在。有任務儘管吩咐。」`,
+  }),
+  (name: string) => ({
+    description: `${name}性格爽朗，喜歡跟船員們插科打諢，是甲板上士氣的來源之一。`,
+    greeting: `「哈，又見面了！今天要聊點什麼？」`,
+  }),
+  (name: string) => ({
+    description: `${name}做事一絲不苟，任何交辦的事務都會反覆確認，深得同僚信賴。`,
+    greeting: `「提督，有什麼吩咐，${name}隨時待命。」`,
+  }),
+] as const;
+
+/** 航海士人設 fallback：AI 停用/失敗時使用，用序列式模板池輪替避免千篇一律。 */
+export function fallbackOfficerPersonaGen(input: { seed: number; officerName: string }): OfficerPersonaGen {
+  const rng = new Rng(input.seed);
+  return rng.pick(OFFICER_PERSONA_TEMPLATES)(input.officerName);
 }

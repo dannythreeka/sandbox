@@ -3,6 +3,7 @@ import type { Job } from "bullmq";
 import type { ServerTickPayload } from "@azure-voyage/shared";
 import { EventGenService } from "../ai/event-gen.service";
 import { NpcStrategyService } from "../ai/npc-strategy.service";
+import { PersonaService } from "../ai/persona.service";
 import { EncounterService } from "../battle/encounter.service";
 import { EventService } from "../event/event.service";
 import { InfluenceService } from "../influence/influence.service";
@@ -22,7 +23,7 @@ export interface AdvanceJobData {
 /**
  * 消費 tick 推進任務（docs/05 §1）。涵蓋 PHASE 2/3（航行/補給）、PHASE 4（海賊/風暴遭遇）、
  * PHASE 6（經濟）、規則事件（慶典排程/到期）、航海士薪資結算、PHASE 7（NPC 商會行動與
- * 影響力結算）、PHASE 8（勝利判定）與 M8 AI 層（NPC 策略刷新、傳聞事件）。
+ * 影響力結算）、PHASE 8（勝利判定）與 M8 AI 層（NPC 策略刷新、傳聞事件、M19 人設補全）。
  */
 @Processor(WORLD_TICK_QUEUE, { concurrency: 5 })
 export class WorldTickProcessor extends WorkerHost {
@@ -37,6 +38,7 @@ export class WorldTickProcessor extends WorkerHost {
     private readonly victoryService: VictoryService,
     private readonly npcStrategyService: NpcStrategyService,
     private readonly eventGenService: EventGenService,
+    private readonly personaService: PersonaService,
   ) {
     super();
   }
@@ -51,6 +53,7 @@ export class WorldTickProcessor extends WorkerHost {
       await this.eventService.rollFestivals(worldId, last.tick);
       await this.eventService.expireFestivals(worldId, last.tick);
       await this.eventGenService.maybeGenerateRumor(worldId, last.tick);
+      await this.personaService.refreshDuePersonas(worldId);
       await this.economyService.regenAllPorts(worldId, last.tick);
       await this.officerService.paySalariesIfDue(worldId, last.tick);
       await this.npcStrategyService.refreshDueStrategies(worldId, last.tick);

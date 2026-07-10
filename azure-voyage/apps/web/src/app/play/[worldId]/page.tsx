@@ -778,6 +778,7 @@ export default function PlayPage() {
                 worldId={worldId}
                 portId={currentPort.portId}
                 gold={snapshot.playerGuild.gold}
+                npcGuilds={snapshot.npcGuilds}
                 onInvested={() => {
                   api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
                 }}

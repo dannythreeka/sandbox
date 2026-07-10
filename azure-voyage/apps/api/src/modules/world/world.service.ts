@@ -284,6 +284,7 @@ export class WorldService {
           skills: o.skills,
           loyalty: o.loyalty,
           salary: o.salary,
+          persona: (o.persona as WorldSnapshot["fleets"][number]["officers"][number]["persona"]) ?? undefined,
         })),
       })),
       // M1：全港名稱/座標可見；visited 僅停靠中港口（迷霧細化在 M2 航行時）
@@ -297,7 +298,19 @@ export class WorldService {
       })),
       npcGuilds: guilds
         .filter((g) => g.kind === "NPC")
-        .map((g) => ({ id: g.id, name: g.name, color: g.color, fame: g.fame })),
+        .map((g) => {
+          const persona = g.aiPersona as { placeholder?: boolean; description?: string; greeting?: string } | null;
+          return {
+            id: g.id,
+            name: g.name,
+            color: g.color,
+            fame: g.fame,
+            persona:
+              persona && !persona.placeholder && persona.description && persona.greeting
+                ? { description: persona.description, greeting: persona.greeting }
+                : undefined,
+          };
+        }),
       victoryProgress: {
         regionsDominated,
         relicsFound,
