@@ -36,6 +36,7 @@ import { api, ApiError } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { createGameSocket } from "@/lib/socket";
 import { SeaMap } from "@/game/SeaMap";
+import { FleetOverviewPanel } from "@/game/FleetOverviewPanel";
 import { TradePanel } from "@/game/TradePanel";
 import { TavernShipyardPanel } from "@/game/TavernShipyardPanel";
 import { BattleScene } from "@/game/BattleScene";
@@ -732,6 +733,12 @@ export default function PlayPage() {
               鍵盤：←/→ 轉舵・↑ 出港/收錨・空白鍵 下錨・1–4 航速
             </span>
           </section>
+
+          {activity === "DOCKED" && currentPort && fleet.ships[0] && (
+            <section className="panel">
+              <FleetOverviewPanel fleet={fleet} />
+            </section>
+          )}
 
           {activity === "DOCKED" && currentPort && fleet.ships[0] && (
             <section className="panel">
