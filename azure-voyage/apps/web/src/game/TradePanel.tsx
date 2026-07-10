@@ -3,6 +3,19 @@
 import { useEffect, useState } from "react";
 import { commodityById } from "@azure-voyage/shared";
 import { api, ApiError } from "@/lib/api";
+import { GameArt } from "./GameArt";
+
+/** 商品分類的 emoji fallback（缺圖示時），對應 commodities.ts 的 COMMODITY_CATEGORIES。 */
+const CATEGORY_FALLBACK_EMOJI: Record<string, string> = {
+  FOOD: "🐟",
+  DRINK: "🍷",
+  TEXTILE: "🧵",
+  ORE: "⛏️",
+  WEAPONRY: "⚔️",
+  CRAFT: "🏺",
+  LUXURY: "💎",
+  SPICE: "🌶️",
+};
 
 interface TradePanelProps {
   worldId: string;
@@ -76,9 +89,22 @@ export function TradePanel({ worldId, portId, fleetId, shipId, onTraded }: Trade
             </tr>
           </thead>
           <tbody>
-            {detail.market.map((m) => (
+            {detail.market.map((m) => {
+              const commodity = commodityById(m.commodityId);
+              return (
               <tr key={m.commodityId} className="border-t border-foam/10">
-                <td className="py-2">{commodityById(m.commodityId).name}</td>
+                <td className="py-2">
+                  <span className="flex items-center gap-2">
+                    <GameArt
+                      category="goods"
+                      id={commodity.category.toLowerCase()}
+                      alt={commodity.category}
+                      className="h-6 w-6 shrink-0 rounded object-cover"
+                      fallback={<span className="text-base">{CATEGORY_FALLBACK_EMOJI[commodity.category]}</span>}
+                    />
+                    {commodity.name}
+                  </span>
+                </td>
                 <td className="py-2 font-mono">{m.stock}</td>
                 <td className="py-2 font-mono text-emerald-300">{m.buyPrice}</td>
                 <td className="py-2 font-mono text-amber-300">{m.sellPrice}</td>
@@ -102,7 +128,8 @@ export function TradePanel({ worldId, portId, fleetId, shipId, onTraded }: Trade
                   </button>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

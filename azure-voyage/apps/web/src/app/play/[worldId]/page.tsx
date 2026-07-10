@@ -43,6 +43,7 @@ import { ExplorationPanel } from "@/game/ExplorationPanel";
 import { DiscoveryPanel } from "@/game/DiscoveryPanel";
 import { InfluencePanel } from "@/game/InfluencePanel";
 import { PortCutscene, type CutsceneState } from "@/game/PortCutscene";
+import { GameArt } from "@/game/GameArt";
 import { PortBanner } from "@/game/PortBanner";
 
 /** M13：使用者選過「不再顯示這個動畫」後永久跳過過場（不影響其他玩家/裝置） */
@@ -104,6 +105,8 @@ export default function PlayPage() {
   const [pendingHeading, setPendingHeading] = useState<number | null>(null);
   const [speedIdx, setSpeedIdx] = useState(1);
   const [notice, setNotice] = useState<string | null>(null);
+  /** 世界事件插圖（M17；docs/11 §2 H），只有 STORM/FESTIVAL/RUMOR 三種世界事件才有對應插圖 */
+  const [noticeKind, setNoticeKind] = useState<"storm" | "festival" | "rumor" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [battleId, setBattleId] = useState<string | null>(null);
   const [battleState, setBattleState] = useState<BattleStateView | null>(null);
@@ -162,7 +165,10 @@ export default function PlayPage() {
         latestFleetRef.current = mine;
         if (mine.activity === "DOCKED" || mine.activity === "ANCHORED") setRoute(null);
       }
-      if (payload.notices.length > 0) setNotice(payload.notices.join(" "));
+      if (payload.notices.length > 0) {
+        setNotice(payload.notices.join(" "));
+        setNoticeKind(null);
+      }
       // tick 有成功推進，「世界正在推進中」這類瞬時壅塞錯誤即已過期，自動清掉
       setError((prev) => (prev === ERROR_MESSAGES_ZH_TW.WORLD_BUSY ? null : prev));
     });
@@ -182,6 +188,7 @@ export default function PlayPage() {
       tripEventCountRef.current = 0;
       if (cutscenesSkipped()) {
         setNotice(`艦隊已抵達 ${portById(payload.portId).name}`);
+        setNoticeKind(null);
       } else {
         setCutscene({ kind: "arrival", portId: payload.portId, day: payload.tick, summary });
       }
@@ -196,6 +203,11 @@ export default function PlayPage() {
         setStormFlashTrigger((n) => n + 1);
       }
       setNotice(payload.event.narrative);
+      setNoticeKind(
+        payload.event.type === "STORM" || payload.event.type === "FESTIVAL" || payload.event.type === "RUMOR"
+          ? (payload.event.type.toLowerCase() as "storm" | "festival" | "rumor")
+          : null,
+      );
       api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
     });
     socket.on(WS_EVENTS.SERVER_BATTLE_START, (payload: ServerBattleStartPayload) => {
@@ -215,6 +227,7 @@ export default function PlayPage() {
             ? "成功脫離戰場。"
             : "艦隊戰敗，被拖回母港療傷……",
       );
+      setNoticeKind(null);
       setBattleId(null);
       setBattleState(null);
       api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
@@ -332,6 +345,7 @@ export default function PlayPage() {
       if (activity === "ANCHORED") {
         seedFleetActivity("SAILING");
         setNotice(null);
+        setNoticeKind(null);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "設定航線失敗");
@@ -403,6 +417,7 @@ export default function PlayPage() {
       if (outcome === "already") await api.anchor(worldId, fleet.id);
       seedFleetActivity("SAILING");
       setNotice(null);
+      setNoticeKind(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "操作失敗");
     }
@@ -550,7 +565,20 @@ export default function PlayPage() {
       </header>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
-      {notice && <p className="text-sm text-emerald-300">{notice}</p>}
+      {notice && (
+        <p className="flex items-center gap-2 text-sm text-emerald-300">
+          {noticeKind && (
+            <GameArt
+              category="event"
+              id={noticeKind}
+              alt=""
+              className="h-8 w-8 shrink-0 rounded border border-gold/40 object-cover"
+              fallback={<></>}
+            />
+          )}
+          {notice}
+        </p>
+      )}
 
       {gameEnded && (
         <section className="panel border-2 border-gold bg-gold/10 text-center">
@@ -767,6 +795,8 @@ export default function PlayPage() {
           battleId={battleId}
           state={battleState}
           log={battleLog}
+          weather={weather}
+          tick={tick ?? undefined}
         />
       )}
 

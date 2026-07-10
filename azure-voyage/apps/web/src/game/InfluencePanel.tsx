@@ -1,13 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { NPC_GUILD_TEMPLATES } from "@azure-voyage/shared";
 import { api, ApiError } from "@/lib/api";
+import { GameArt } from "./GameArt";
 
 interface Props {
   worldId: string;
   portId: string;
   gold: number;
   onInvested: () => void;
+}
+
+/** 商會名稱查對 NPC 模板 key，玩家自己的商會名稱是自訂的，查不到就沒有立繪（M17）。 */
+function guildArtId(guildName: string): string | null {
+  const template = NPC_GUILD_TEMPLATES.find((t) => t.name === guildName);
+  return template ? `guild-${template.key.replace(/^npc\./, "")}` : null;
 }
 
 /** 港口影響力投資面板（docs/01 §4.3；docs/05 §6）。 */
@@ -53,13 +61,31 @@ export function InfluencePanel({ worldId, portId, gold, onInvested }: Props) {
       <h3 className="text-lg font-semibold text-foam">港口影響力</h3>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <ul className="space-y-1 text-sm">
-        {detail.influences.map((inf) => (
-          <li key={inf.guildId} className="flex items-center gap-2">
-            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: inf.color }} />
-            <span className="flex-1 text-slate-300">{inf.guildName}</span>
-            <span className="font-mono text-gold">{inf.share.toFixed(1)}%</span>
-          </li>
-        ))}
+        {detail.influences.map((inf) => {
+          const artId = guildArtId(inf.guildName);
+          return (
+            <li key={inf.guildId} className="flex items-center gap-2">
+              {artId ? (
+                <GameArt
+                  category="portrait"
+                  id={artId}
+                  alt={inf.guildName}
+                  className="h-8 w-7 shrink-0 rounded border border-gold/40 object-cover"
+                  fallback={
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: inf.color }}
+                    />
+                  }
+                />
+              ) : (
+                <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: inf.color }} />
+              )}
+              <span className="flex-1 text-slate-300">{inf.guildName}</span>
+              <span className="font-mono text-gold">{inf.share.toFixed(1)}%</span>
+            </li>
+          );
+        })}
       </ul>
       <div className="flex items-center gap-2">
         <input
