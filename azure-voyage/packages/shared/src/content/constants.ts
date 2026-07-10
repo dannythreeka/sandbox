@@ -142,6 +142,18 @@ export const BALANCE = {
   AI_CALL_TOKEN_ESTIMATE: 2_000,
   /** 每個 tick 最多補全幾筆 PERSONA（NPC 商會＋航海士合計），避免開局那次 tick 序列呼叫太多次 Claude */
   PERSONA_MAX_PER_TICK: 3,
+
+  // ── 對話代理（DIALOGUE，docs/06 §5）──
+  /** 低延遲、量大，用較小的模型 */
+  DIALOGUE_MODEL: "claude-haiku-4-5-20251001",
+  /** 每個 NPC 的對話歷史最多保留幾輪（Redis） */
+  DIALOGUE_MAX_HISTORY_TURNS: 20,
+  /** 每個世界每日對話則數上限 */
+  DIALOGUE_DAILY_LIMIT: 60,
+  /** 單則對話冷卻秒數，避免洗頻 */
+  DIALOGUE_COOLDOWN_SECONDS: 3,
+  /** 回覆字數上限（連同 system prompt 一起約束模型輸出長度） */
+  DIALOGUE_MAX_REPLY_CHARS: 150,
 } as const;
 
 /** 難度乘數（覆蓋 BALANCE 的比例） */

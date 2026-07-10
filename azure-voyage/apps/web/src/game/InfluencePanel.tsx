@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { NPC_GUILD_TEMPLATES, type NpcGuildPublicView } from "@azure-voyage/shared";
 import { api, ApiError } from "@/lib/api";
+import { DialoguePanel } from "./DialoguePanel";
 import { GameArt } from "./GameArt";
 
 interface Props {
@@ -26,6 +27,7 @@ export function InfluencePanel({ worldId, portId, gold, npcGuilds, onInvested }:
   const [amount, setAmount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [dialogueTargetId, setDialogueTargetId] = useState<string | null>(null);
 
   async function reload() {
     try {
@@ -65,7 +67,8 @@ export function InfluencePanel({ worldId, portId, gold, npcGuilds, onInvested }:
       <ul className="space-y-1 text-sm">
         {detail.influences.map((inf) => {
           const artId = guildArtId(inf.guildName);
-          const persona = npcGuilds.find((g) => g.name === inf.guildName)?.persona;
+          const matchedGuild = npcGuilds.find((g) => g.name === inf.guildName);
+          const persona = matchedGuild?.persona;
           return (
             <li key={inf.guildId} className="flex items-center gap-2" title={persona?.greeting}>
               {artId ? (
@@ -89,6 +92,11 @@ export function InfluencePanel({ worldId, portId, gold, npcGuilds, onInvested }:
                 {persona && <span className="ml-1 text-xs text-foam/60">· {persona.description}</span>}
               </span>
               <span className="font-mono text-gold">{inf.share.toFixed(1)}%</span>
+              {matchedGuild && (
+                <button className="btn-ghost px-2 py-0.5 text-xs" onClick={() => setDialogueTargetId(matchedGuild.id)}>
+                  對話
+                </button>
+              )}
             </li>
           );
         })}
@@ -107,6 +115,15 @@ export function InfluencePanel({ worldId, portId, gold, npcGuilds, onInvested }:
           投資
         </button>
       </div>
+      {dialogueTargetId && (
+        <DialoguePanel
+          worldId={worldId}
+          targetType="GUILD"
+          targetId={dialogueTargetId}
+          targetName={npcGuilds.find((g) => g.id === dialogueTargetId)?.name ?? "使節"}
+          onClose={() => setDialogueTargetId(null)}
+        />
+      )}
     </div>
   );
 }

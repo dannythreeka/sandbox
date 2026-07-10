@@ -26,6 +26,7 @@ function makePrisma(gold = 1000, fame = 0) {
         worldEvents.push(args);
         return args;
       }),
+      count: jest.fn(async () => worldEvents.length),
     },
     aiGenerationLog: {
       create: jest.fn(async (args: { data: unknown }) => {

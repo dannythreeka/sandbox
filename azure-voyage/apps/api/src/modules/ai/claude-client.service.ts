@@ -14,6 +14,13 @@ interface JsonSchema {
   required?: string[];
 }
 
+export interface ClaudeChatResult {
+  text: string;
+  toolCalls: { name: string; input: unknown }[];
+  inputTokens: number;
+  outputTokens: number;
+}
+
 /**
  * @anthropic-ai/sdk 封裝（docs/06 §1）：單一入口，強制模型透過一顆 tool
  * 回傳結構化 JSON。`AI_ENABLED=false` 或缺少 API key 時 client 為 null，
@@ -72,6 +79,57 @@ export class ClaudeClientService {
       };
     } catch (err) {
       this.logger.warn(`Claude 呼叫失敗，改走 fallback: ${err instanceof Error ? err.message : String(err)}`);
+      return null;
+    }
+  }
+
+  /**
+   * 自由文字對話（docs/06 §5 DIALOGUE）：不強制工具，模型可自行決定要不要
+   * 呼叫 `tools` 裡的任一顆（`tool_choice: "auto"`），文字與工具呼叫可以並存。
+   */
+  async chat(opts: {
+    model: string;
+    system: string;
+    messages: { role: "user" | "assistant"; content: string }[];
+    maxTokens?: number;
+    tools?: { name: string; description: string; inputSchema: JsonSchema }[];
+  }): Promise<ClaudeChatResult | null> {
+    if (!this.client) return null;
+    try {
+      const response = await this.client.messages.create(
+        {
+          model: opts.model,
+          max_tokens: opts.maxTokens ?? 300,
+          system: opts.system,
+          messages: opts.messages,
+          ...(opts.tools && opts.tools.length > 0
+            ? {
+                tools: opts.tools.map((t) => ({
+                  name: t.name,
+                  description: t.description,
+                  input_schema: t.inputSchema as unknown as Anthropic.Tool.InputSchema,
+                })),
+                tool_choice: { type: "auto" as const },
+              }
+            : {}),
+        },
+        { timeout: 15_000 },
+      );
+      const text = response.content
+        .filter((b): b is Anthropic.TextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("");
+      const toolCalls = response.content
+        .filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use")
+        .map((b) => ({ name: b.name, input: b.input }));
+      return {
+        text,
+        toolCalls,
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+      };
+    } catch (err) {
+      this.logger.warn(`Claude 對話呼叫失敗，改走 fallback: ${err instanceof Error ? err.message : String(err)}`);
       return null;
     }
   }

@@ -39,6 +39,8 @@ export const ERROR_CODES = [
   "NOT_NEAR_DISCOVERY_SITE",
   "DISCOVERY_ALREADY_REGISTERED",
   "NO_GUILD_HALL",
+  // 對話代理（M20）
+  "DIALOGUE_COOLDOWN",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -88,4 +90,5 @@ export const ERROR_MESSAGES_ZH_TW: Record<ErrorCode, string> = {
   NOT_NEAR_DISCOVERY_SITE: "附近沒有可探索的發現物",
   DISCOVERY_ALREADY_REGISTERED: "此發現物已登錄過",
   NO_GUILD_HALL: "此港口沒有學會分部",
+  DIALOGUE_COOLDOWN: "對話太頻繁了，稍等一下再試",
 };

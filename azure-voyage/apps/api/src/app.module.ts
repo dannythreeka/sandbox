@@ -9,6 +9,7 @@ import { ClockModule } from "./modules/clock/clock.module";
 import { GatewayModule } from "./gateway/gateway.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { BattleModule } from "./modules/battle/battle.module";
+import { DialogueModule } from "./modules/dialogue/dialogue.module";
 import { DiscoveryModule } from "./modules/discovery/discovery.module";
 import { EventModule } from "./modules/event/event.module";
 import { InfluenceModule } from "./modules/influence/influence.module";
@@ -51,6 +52,7 @@ import { RedisModule } from "./redis/redis.module";
     DiscoveryModule,
     EventModule,
     InfluenceModule,
+    DialogueModule,
     ClockModule,
     GatewayModule,
   ],

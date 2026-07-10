@@ -89,3 +89,16 @@ export function fallbackOfficerPersonaGen(input: { seed: number; officerName: st
   const rng = new Rng(input.seed);
   return rng.pick(OFFICER_PERSONA_TEMPLATES)(input.officerName);
 }
+
+const DIALOGUE_FALLBACK_TEMPLATES = [
+  "「嗯……讓我想想該怎麼回答你。」",
+  "「這個嘛，一時之間不知道從何說起。」",
+  "「抱歉，現在有點忙，晚點再聊吧。」",
+] as const;
+
+/** 對話 fallback：AI 停用/失敗時使用，優先用對方既有的開場白，否則走通用模板池。 */
+export function fallbackDialogueReply(input: { seed: number; greeting?: string }): string {
+  if (input.greeting) return input.greeting;
+  const rng = new Rng(input.seed);
+  return rng.pick(DIALOGUE_FALLBACK_TEMPLATES);
+}
