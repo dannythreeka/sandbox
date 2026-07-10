@@ -151,5 +151,13 @@ P0 合計 **43 張**（港口先做 7 張時為 **29 張**）——一次生圖�
 - **P0 訂單表**：`tools/artgen/manifest.mjs`，29 筆（7 港口場景＋12 航海士＋10 船級），
   完整 prompt 已由 content 資料（`regions.ts`／`officersPool.ts`／`shipClasses.ts`）
   展開好，`node tools/artgen/generate.mjs --dry-run` 可預覽不耗配額。
-- **待辦**：實際生圖批次尚未執行（等待使用者提供 `GEMINI_API_KEY`），執行後的產出
-  webp 與任何 prompt 調整會在下一個 PR 記錄。
+- **P0 批次已完成落地**：Google Gemini／Imagen 這條路最終卡在帳號限制——免費層級的
+  API key 對應專案，圖片類模型（Imagen `:predict` 與所有原生 Gemini 圖片輸出模型）
+  配額皆為 0，需要專案開通計費才能用；改走 **Pollinations.ai**（使用者提供的
+  API key）。因為這個 sandbox 的網路政策擋掉 `pollinations.ai`（proxy 在 CONNECT
+  階段即回 403，經 `__agentproxy/status` 證實是政策阻擋，非帳號問題），新增
+  `tools/artgen/generate-pollinations.mjs`（與 `generate.mjs` 共用同一份
+  manifest，只是換一個生圖服務），由使用者在自己機器上執行，產出的 29 張 webp
+  直接 push 回 `main`。全數核對：檔案格式/尺寸正確、風格與 A 方向（古典油畫×
+  羊皮肌）一致、無文字浮水印/真實旗幟/真實地標，於 `/play/[worldId]` 實際頁面
+  （港口橫幅、酒館頭像、造船廠船圖）render 正常，無 fallback 誤觸發。
