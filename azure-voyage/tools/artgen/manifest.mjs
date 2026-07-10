@@ -11,43 +11,62 @@ export const STYLE_PREFIX =
 export const NEGATIVE_PROMPT =
   "modern objects, photograph, real person, text, watermark, frame, border, low quality";
 
-// ── A. 港口場景（7 海域代表圖，size=2；size 1/3 港口沿用同張，缺檔則走 M13 剪影 fallback）──
-const PORT_SCENES = [
+// ── A. 港口場景（M18：7 海域 × 實際存在的規模，取代 M16 只做 size=2 代表圖的做法）──
+// 規模詞：size1=小漁村、size2=中型商港（M16 既有）、size3=首府大港；
+// coral_arc／dusk_expanse 在 ports.ts 裡沒有 size3 港口，故不產生對應圖。
+const SIZE_WORDS = {
+  1: "a small fishing village harbor, a handful of modest wooden docks, a few humble sailing boats",
+  2: "a mid-sized harbor town, sailing ships at anchor, stone piers",
+  3: "a grand capital harbor city, bustling waterfront crowded with tall ships, guild banners, grand stone architecture",
+};
+
+const PORT_SCENE_REGIONS = [
   {
     regionId: "north_reach",
+    sizes: [1, 2, 3],
     words: "snow-dusted timber roofs, cold windswept fjord harbor, grey stone piers, pine-covered hills",
   },
   {
     regionId: "amber_gulf",
+    sizes: [1, 2, 3],
     words: "golden sandstone buildings, calm turquoise gulf waters, olive groves on the hillside",
   },
   {
     regionId: "ironcliff",
+    sizes: [1, 2, 3],
     words: "dark iron-hued cliffs, rugged coastline, weathered granite piers, forge smoke over rooftops",
   },
   {
     regionId: "silkwind",
+    sizes: [1, 2, 3],
     words: "terraced silk-trade town, colorful silk banners, narrow strait with lantern-lit junks",
   },
   {
     regionId: "meridian",
+    sizes: [1, 2, 3],
     words: "bustling equatorial crossroads harbor, spice warehouses, distant storm clouds on the horizon",
   },
   {
     regionId: "coral_arc",
+    sizes: [1, 2],
     words: "coral reef lagoon, white sand beaches, turquoise shallows, thatched-roof stilt houses",
   },
   {
     regionId: "dusk_expanse",
+    sizes: [1, 2],
     words: "twilight sky with deep crimson clouds, remote windswept outpost, black volcanic rock shoreline",
   },
-].map(({ regionId, words }) => ({
-  category: "port-scene",
-  id: `${regionId}-s2`,
-  width: 1600,
-  height: 900,
-  prompt: `${STYLE_PREFIX}, wide establishing shot of a mid-sized harbor town, sailing ships at anchor, stone piers, ${words}`,
-}));
+];
+
+const PORT_SCENES = PORT_SCENE_REGIONS.flatMap(({ regionId, sizes, words }) =>
+  sizes.map((size) => ({
+    category: "port-scene",
+    id: `${regionId}-s${size}`,
+    width: 1600,
+    height: 900,
+    prompt: `${STYLE_PREFIX}, wide establishing shot of ${SIZE_WORDS[size]}, ${words}`,
+  })),
+);
 
 // ── B. 航海士立繪（12 名，特徵詞取自 officersPool.ts 的技能／數值傾向）──
 const OFFICER_PORTRAITS = [

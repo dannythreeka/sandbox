@@ -13,12 +13,14 @@
  *   POLLINATIONS_API_KEY=xxx node generate-pollinations.mjs
  *   POLLINATIONS_API_KEY=xxx node generate-pollinations.mjs --only=ship
  *   POLLINATIONS_API_KEY=xxx node generate-pollinations.mjs --id=sera
+ *   POLLINATIONS_API_KEY=xxx node generate-pollinations.mjs --skip-existing  # 只補缺的檔案
  *
  * 產出直接寫進 ../../apps/web/public/art/<category>/<id>.webp（相對這支腳本的
  * 位置算），跑完把整個 apps/web/public/art/ 目錄的變更 commit/push 回來，
  * 或直接把資料夾傳回來給我整理入庫都可以。
  */
 
+import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,11 +33,17 @@ const API_BASE = "https://image.pollinations.ai/prompt";
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
+const skipExisting = args.includes("--skip-existing");
 const onlyCategory = args.find((a) => a.startsWith("--only="))?.slice("--only=".length);
 const onlyId = args.find((a) => a.startsWith("--id="))?.slice("--id=".length);
 
 function selectEntries() {
-  return MANIFEST.filter((e) => (!onlyCategory || e.category === onlyCategory) && (!onlyId || e.id === onlyId));
+  return MANIFEST.filter(
+    (e) =>
+      (!onlyCategory || e.category === onlyCategory) &&
+      (!onlyId || e.id === onlyId) &&
+      (!skipExisting || !existsSync(path.join(OUT_ROOT, e.category, `${e.id}.webp`))),
+  );
 }
 
 /**
