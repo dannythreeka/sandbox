@@ -2,13 +2,23 @@
 
 import { useState } from "react";
 import type { Socket } from "socket.io-client";
-import { WS_EVENTS, type BattleActionInput, type BattleStateView } from "@azure-voyage/shared";
+import { WS_EVENTS, type BattleActionInput, type BattleStateView, type WeatherKind } from "@azure-voyage/shared";
+import { GameArt } from "./GameArt";
 
 interface Props {
   socket: Socket;
   battleId: string;
   state: BattleStateView;
   log: string[];
+  /** 交戰當下的天氣/時刻，決定背景（M17；docs/11 §2 G）；缺就走平靜海。 */
+  weather?: WeatherKind | null;
+  tick?: number;
+}
+
+/** 沒有晝夜系統，用 tick 奇偶當「夜戰」的簡單決定性判斷；風暴醞釀則優先顯示暴風海。 */
+function pickBattleBg(weather?: WeatherKind | null, tick?: number): "calm" | "storm" | "night" {
+  if (weather === "STORM_BREWING") return "storm";
+  return (tick ?? 0) % 2 === 0 ? "calm" : "night";
 }
 
 const ACTION_LABELS: Record<BattleActionInput["type"], string> = {
@@ -20,7 +30,8 @@ const ACTION_LABELS: Record<BattleActionInput["type"], string> = {
 };
 
 /** 海戰場景（M5 簡化版：清單式棋盤，非完整 Pixi 六角board，見 docs/07 待補）。 */
-export function BattleScene({ socket, battleId, state, log }: Props) {
+export function BattleScene({ socket, battleId, state, log, weather, tick }: Props) {
+  const battleBg = pickBattleBg(weather, tick);
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(
     state.pendingUnitIds.find((id) => state.units.find((u) => u.id === id)?.side === "PLAYER") ?? null,
   );
@@ -77,8 +88,22 @@ export function BattleScene({ socket, battleId, state, log }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="panel max-h-[90vh] w-full max-w-3xl space-y-4 overflow-y-auto">
-        <h2 className="text-xl font-bold text-foam">
+      <GameArt
+        category="battle-bg"
+        id={battleBg}
+        alt=""
+        className="pointer-events-none fixed inset-0 h-full w-full object-cover opacity-30"
+        fallback={<></>}
+      />
+      <div className="panel relative max-h-[90vh] w-full max-w-3xl space-y-4 overflow-y-auto">
+        <h2 className="flex items-center gap-2 text-xl font-bold text-foam">
+          <GameArt
+            category="event"
+            id="pirate"
+            alt=""
+            className="h-8 w-8 rounded border border-gold/40 object-cover"
+            fallback={<span className="text-2xl">☠️</span>}
+          />
           海戰進行中 · 第 {state.round} 回合，正在行動：
           {state.units.find((u) => u.id === state.pendingUnitIds[0])?.name ?? "—"}
         </h2>

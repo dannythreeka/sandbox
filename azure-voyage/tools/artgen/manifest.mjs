@@ -91,4 +91,106 @@ const SHIP_VIEWS = [
   prompt: `${STYLE_PREFIX}, side view of a ${words}, full sails, calm sea, horizon composition`,
 }));
 
-export const MANIFEST = [...PORT_SCENES, ...OFFICER_PORTRAITS, ...SHIP_VIEWS];
+// ── F. 標題／登入頁主視覺（1 張）──
+const KEY_VISUALS = [
+  {
+    id: "title",
+    words:
+      "a lone tall ship at full sail crossing sunlit open ocean under a dramatic sky, " +
+      "sense of adventure and discovery, wide cinematic composition",
+  },
+].map(({ id, words }) => ({
+  category: "key-visual",
+  id,
+  width: 1600,
+  height: 900,
+  prompt: `${STYLE_PREFIX}, grand title illustration, ${words}`,
+}));
+
+// ── G. 戰鬥背景（平靜海／風暴海／夜戰，3 張）──
+const BATTLE_BACKGROUNDS = [
+  { id: "calm", words: "calm turquoise sea battlefield, gentle waves, clear sky, ships engaged at a distance" },
+  { id: "storm", words: "stormy grey-green sea battlefield, heavy rain, lightning, tall crashing waves" },
+  { id: "night", words: "night sea battlefield under moonlight, dark deep-blue water, distant ship lanterns" },
+].map(({ id, words }) => ({
+  category: "battle-bg",
+  id,
+  width: 1600,
+  height: 900,
+  prompt: `${STYLE_PREFIX}, wide battle scene backdrop, ${words}, dramatic composition`,
+}));
+
+// ── C. NPC 商會會長立繪（5 名，特徵詞取自 npcGuilds.ts 的 archetype）──
+const GUILD_LEADER_PORTRAITS = [
+  {
+    id: "frost_compact",
+    words: "stern older guild leader in fur-lined coat, cautious calculating expression, northern harbor air",
+  },
+  {
+    id: "crimson_sails",
+    words: "roguish guild leader with crimson sash, half-smirk, dangerous confident air",
+  },
+  {
+    id: "gilded_scale",
+    words: "wealthy guild leader in fine embroidered coat, holding a balance scale, shrewd composed expression",
+  },
+  {
+    id: "silkwind_caravan",
+    words: "silk-robed guild leader with ornate turban, calm commanding presence, trade ledger in hand",
+  },
+  {
+    id: "tideglass_league",
+    words: "weathered explorer guild leader, sun-bronzed skin, spyglass in hand, adventurous confident look",
+  },
+].map(({ id, words }) => ({
+  category: "portrait",
+  id: `guild-${id}`,
+  width: 768,
+  height: 1024,
+  prompt: `${STYLE_PREFIX}, half-body portrait of a ${words}, dark plain background`,
+}));
+
+// ── H. 事件插圖（風暴/慶典/傳聞/發現/下錨探索/海賊，6 張）──
+const EVENT_ILLUSTRATIONS = [
+  { id: "storm", words: "a violent sea storm brewing, dark clouds and whitecaps, dramatic lighting" },
+  { id: "festival", words: "a harbor festival at night, lanterns and fireworks over the water, joyful atmosphere" },
+  { id: "rumor", words: "a hooded figure whispering at a candlelit tavern table, mysterious atmosphere" },
+  { id: "discovery", words: "an ancient shipwreck glimpsed underwater near a reef, sense of wonder" },
+  { id: "anchor", words: "a ship's anchor dropping into calm turquoise water, sunlight rays" },
+  { id: "pirate", words: "a pirate ship's black flag and cutlass silhouette against a stormy horizon" },
+].map(({ id, words }) => ({
+  category: "event",
+  id,
+  width: 512,
+  height: 512,
+  prompt: `${STYLE_PREFIX}, small narrative illustration of ${words}`,
+}));
+
+// ── I. 商品類別圖示（8 大類，取自 commodities.ts 的 COMMODITY_CATEGORIES）──
+const GOODS_ICONS = [
+  { id: "food", words: "dried fish and salt barrels, still life" },
+  { id: "drink", words: "a wine bottle and rum cask, still life" },
+  { id: "textile", words: "folded silk and wool bolts, still life" },
+  { id: "ore", words: "raw iron and copper ore chunks, still life" },
+  { id: "weaponry", words: "a cutlass and cannonball, still life" },
+  { id: "craft", words: "blown glasswork and pottery, still life" },
+  { id: "luxury", words: "pearls and amber jewelry, still life" },
+  { id: "spice", words: "peppercorns and cinnamon sticks in small sacks, still life" },
+].map(({ id, words }) => ({
+  category: "goods",
+  id,
+  width: 256,
+  height: 256,
+  prompt: `${STYLE_PREFIX}, small icon illustration of ${words}, centered composition`,
+}));
+
+export const MANIFEST = [
+  ...PORT_SCENES,
+  ...OFFICER_PORTRAITS,
+  ...SHIP_VIEWS,
+  ...KEY_VISUALS,
+  ...BATTLE_BACKGROUNDS,
+  ...GUILD_LEADER_PORTRAITS,
+  ...EVENT_ILLUSTRATIONS,
+  ...GOODS_ICONS,
+];
