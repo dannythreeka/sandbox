@@ -1,7 +1,7 @@
 # tools/artgen
 
-M16 生圖管線（docs/11 §3 API 模式）。讀 `manifest.mjs` 的訂單表，兩支腳本共用同一份
-29 筆 P0 prompt，差別只在打哪個生圖服務：
+生圖管線（docs/11 §3 API 模式）。讀 `manifest.mjs` 的訂單表，兩支腳本共用同一份
+manifest（M16 P0 + M17 補完 + M18 港口規模擴充，現有 64 筆），差別只在打哪個生圖服務：
 
 - `generate.mjs` → Google Generative Language API（Gemini / Imagen）
 - `generate-pollinations.mjs` → Pollinations.ai
@@ -42,6 +42,9 @@ pnpm install
 POLLINATIONS_API_KEY=xxx node generate-pollinations.mjs --dry-run
 POLLINATIONS_API_KEY=xxx node generate-pollinations.mjs
 POLLINATIONS_API_KEY=xxx node generate-pollinations.mjs --only=ship
+
+# 只補目前缺少的檔案（例如 manifest 擴充後只想跑新增的項目）
+POLLINATIONS_API_KEY=xxx node generate-pollinations.mjs --skip-existing
 ```
 
 跑完後 `apps/web/public/art/` 底下會多出對應的 webp 檔，直接 commit/push 回來，

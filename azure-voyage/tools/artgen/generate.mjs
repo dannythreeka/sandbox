@@ -8,11 +8,13 @@
  *   GEMINI_API_KEY=xxx node generate.mjs              # 產生 manifest 全部項目
  *   GEMINI_API_KEY=xxx node generate.mjs --only=ship  # 只做某 category
  *   GEMINI_API_KEY=xxx node generate.mjs --id=sera    # 只做某一筆（id 精確比對）
+ *   GEMINI_API_KEY=xxx node generate.mjs --skip-existing  # 只補缺的檔案
  *   node generate.mjs --dry-run                       # 不呼叫 API，只列出將產生的項目
  *
  * ⚠️ 不要把 API key 寫進任何檔案——一律用環境變數，用完即丟。
  */
 
+import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,11 +27,17 @@ const API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
+const skipExisting = args.includes("--skip-existing");
 const onlyCategory = args.find((a) => a.startsWith("--only="))?.slice("--only=".length);
 const onlyId = args.find((a) => a.startsWith("--id="))?.slice("--id=".length);
 
 function selectEntries() {
-  return MANIFEST.filter((e) => (!onlyCategory || e.category === onlyCategory) && (!onlyId || e.id === onlyId));
+  return MANIFEST.filter(
+    (e) =>
+      (!onlyCategory || e.category === onlyCategory) &&
+      (!onlyId || e.id === onlyId) &&
+      (!skipExisting || !existsSync(path.join(OUT_ROOT, e.category, `${e.id}.webp`))),
+  );
 }
 
 async function listModels(apiKey) {
