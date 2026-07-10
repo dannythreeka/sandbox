@@ -140,6 +140,8 @@ export const BALANCE = {
   AI_DAILY_TOKEN_BUDGET: 250_000,
   /** 單次生成呼叫預估用量（保守估計，超出實際值也沒關係，只影響配額判斷） */
   AI_CALL_TOKEN_ESTIMATE: 2_000,
+  /** 每個 tick 最多補全幾筆 PERSONA（NPC 商會＋航海士合計），避免開局那次 tick 序列呼叫太多次 Claude */
+  PERSONA_MAX_PER_TICK: 3,
 } as const;
 
 /** 難度乘數（覆蓋 BALANCE 的比例） */

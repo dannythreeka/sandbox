@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { OFFICER_ROLES } from "../content/officersPool";
+import { PersonaGenViewSchema } from "./world";
 
 export const OfficerRoleSchema = z.enum(OFFICER_ROLES);
 
@@ -16,6 +17,7 @@ export const TavernOfficerViewSchema = z.object({
   }),
   skills: z.array(z.string()),
   salary: z.number().int(),
+  persona: PersonaGenViewSchema.optional(),
 });
 export type TavernOfficerView = z.infer<typeof TavernOfficerViewSchema>;
 

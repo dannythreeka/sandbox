@@ -133,13 +133,18 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
         ) : (
           <ul className="space-y-2">
             {tavern.map((o) => (
-              <li key={o.id} className="flex items-center gap-3 rounded-md border border-foam/20 p-2 text-sm">
+              <li
+                key={o.id}
+                className="flex items-center gap-3 rounded-md border border-foam/20 p-2 text-sm"
+                title={o.persona?.greeting}
+              >
                 <OfficerAvatar portrait={o.portrait} name={o.name} />
                 <span className="flex-1">
                   <span className="font-serif text-base text-slate-100">{o.name}</span>
                   <br />
                   統率{o.stats.lead} 航海{o.stats.nav} 戰鬥{o.stats.combat} 商才{o.stats.trade} 學識
                   {o.stats.lore} · 薪 {o.salary}
+                  {o.persona && <span className="block text-xs text-foam/60">{o.persona.description}</span>}
                 </span>
                 <button className="btn-ghost" onClick={() => recruit(o.id)}>
                   招募
@@ -152,10 +157,15 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
         <h4 className="mb-2 mt-4 font-medium text-slate-200">艦隊航海士</h4>
         <ul className="space-y-2">
           {fleet.officers.map((o) => (
-            <li key={o.id} className="flex items-center gap-3 rounded-md border border-foam/20 p-2 text-sm">
+            <li
+              key={o.id}
+              className="flex items-center gap-3 rounded-md border border-foam/20 p-2 text-sm"
+              title={o.persona?.greeting}
+            >
               <OfficerAvatar portrait={o.portrait} name={o.name} />
               <span className="flex-1">
                 {o.name}（忠誠 {o.loyalty}）
+                {o.persona && <span className="block text-xs text-foam/60">{o.persona.description}</span>}
               </span>
               <select
                 className="input w-32 py-1"

@@ -21,6 +21,7 @@ export class OfficerService {
       stats: o.stats as TavernOfficerView["stats"],
       skills: o.skills,
       salary: o.salary,
+      persona: (o.persona as TavernOfficerView["persona"]) ?? undefined,
     }));
   }
 

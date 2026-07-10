@@ -28,6 +28,13 @@ export type WorldSummary = z.infer<typeof WorldSummarySchema>;
 
 // ── 世界快照（docs/04 §8）。M1 版本：完整初始狀態；activeEvents 於 M2+ 填充 ──
 
+/** M19 PERSONA agent 補全前為 undefined；補全後才有真人設可顯示/對話。 */
+export const PersonaGenViewSchema = z.object({
+  description: z.string(),
+  greeting: z.string(),
+});
+export type PersonaGenView = z.infer<typeof PersonaGenViewSchema>;
+
 export const OfficerViewSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -43,6 +50,7 @@ export const OfficerViewSchema = z.object({
   skills: z.array(z.string()),
   loyalty: z.number().int(),
   salary: z.number().int(),
+  persona: PersonaGenViewSchema.optional(),
 });
 export type OfficerView = z.infer<typeof OfficerViewSchema>;
 
@@ -94,6 +102,7 @@ export const NpcGuildPublicViewSchema = z.object({
   name: z.string(),
   color: z.string(),
   fame: z.number().int(),
+  persona: PersonaGenViewSchema.optional(),
 });
 export type NpcGuildPublicView = z.infer<typeof NpcGuildPublicViewSchema>;
 

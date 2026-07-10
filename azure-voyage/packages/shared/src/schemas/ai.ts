@@ -44,3 +44,18 @@ export const AiEventProposalSchema = z.object({
   fameReward: z.number().int().min(0).max(20),
 });
 export type AiEventProposal = z.infer<typeof AiEventProposalSchema>;
+
+// ── 人設生成器（PERSONA）──
+
+/** AI 只生成敘事欄位；archetype/riskTolerance 等既有數值資料不經 AI，維持規則層產生。 */
+export const NpcPersonaGenSchema = z.object({
+  description: z.string().min(1).max(400),
+  greeting: z.string().min(1).max(150),
+});
+export type NpcPersonaGen = z.infer<typeof NpcPersonaGenSchema>;
+
+export const OfficerPersonaGenSchema = z.object({
+  description: z.string().min(1).max(300),
+  greeting: z.string().min(1).max(150),
+});
+export type OfficerPersonaGen = z.infer<typeof OfficerPersonaGenSchema>;
