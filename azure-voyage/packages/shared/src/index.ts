@@ -39,4 +39,5 @@ export * from "./schemas/battle";
 export * from "./schemas/event";
 export * from "./schemas/influence";
 export * from "./schemas/ai";
+export * from "./schemas/dialogue";
 export * from "./schemas/ws";

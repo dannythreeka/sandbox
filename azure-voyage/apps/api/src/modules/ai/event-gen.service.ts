@@ -41,10 +41,23 @@ export class EventGenService {
 
   async maybeGenerateRumor(worldId: string, tick: number): Promise<void> {
     if (tick % BALANCE.AI_EVENT_INTERVAL_TICKS !== 0) return;
+    await this.generateAndBroadcastRumor(worldId, tick);
+  }
+
+  /** 立即觸發一則傳聞，跳過 tick 間隔檢查（docs/06 §5：DIALOGUE 的 offer_rumor 工具用）。 */
+  async triggerRumorNow(worldId: string): Promise<void> {
+    const world = await this.prisma.gameWorld.findUniqueOrThrow({ where: { id: worldId } });
+    await this.generateAndBroadcastRumor(worldId, world.currentTick);
+  }
+
+  private async generateAndBroadcastRumor(worldId: string, tick: number): Promise<void> {
     const world = await this.prisma.gameWorld.findUniqueOrThrow({ where: { id: worldId } });
     const playerGuild = await this.prisma.guild.findFirstOrThrow({ where: { worldId, kind: "PLAYER" } });
+    // 用既有 RUMOR 事件數當鹽值：同一 tick 內被觸發多次（如 DIALOGUE 的 offer_rumor）
+    // 也不會產生重複內容，仍是決定性——依賴的是已落地的資料庫狀態，不是掛鐘時間。
+    const rumorCount = await this.prisma.worldEvent.count({ where: { worldId, type: "RUMOR" } });
 
-    const seed = deriveSeed(world.seed, tick, 0xa17e);
+    const seed = deriveSeed(world.seed, tick, 0xa17e, rumorCount);
     const rng = new Rng(seed);
     const port = rng.pick(PORTS);
 
@@ -72,7 +85,7 @@ export class EventGenService {
 
     const payload: ServerEventPayload = {
       tick,
-      event: { id: `rumor-${tick}`, type: "RUMOR", narrative: proposal.narrative, portId: port.id },
+      event: { id: `rumor-${tick}-${rumorCount}`, type: "RUMOR", narrative: proposal.narrative, portId: port.id },
     };
     this.events.emit(WORLD_EVENT_EMITTED, { worldId, payload });
   }

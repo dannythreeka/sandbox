@@ -6,6 +6,8 @@ import {
   type AuthResult,
   type AuthTokens,
   type CreateWorldInput,
+  type DialogueRequest,
+  type DialogueResponse,
   type DiscoveryRecordView,
   type ErrorCode,
   type ExploreResult,
@@ -143,5 +145,10 @@ export const api = {
     request<InvestResult>(`/worlds/${worldId}/ports/${portId}/invest`, {
       method: "POST",
       body: { amount },
+    }),
+  dialogue: (worldId: string, input: DialogueRequest) =>
+    request<DialogueResponse>(`/worlds/${worldId}/dialogue`, {
+      method: "POST",
+      body: input,
     }),
 };

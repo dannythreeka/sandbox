@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { OFFICER_ROLES, SHIP_CLASSES, type FleetView, type TavernOfficerView } from "@azure-voyage/shared";
 import { officerApi } from "@/lib/officerApi";
+import { DialoguePanel } from "./DialoguePanel";
 import { GameArt } from "./GameArt";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -60,6 +61,7 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
   const [error, setError] = useState<string | null>(null);
   const [shipName, setShipName] = useState("");
   const [shipClassId, setShipClassId] = useState(SHIP_CLASSES[0].id);
+  const [dialogueTarget, setDialogueTarget] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     officerApi
@@ -146,6 +148,9 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
                   {o.stats.lore} · 薪 {o.salary}
                   {o.persona && <span className="block text-xs text-foam/60">{o.persona.description}</span>}
                 </span>
+                <button className="btn-ghost" onClick={() => setDialogueTarget({ id: o.id, name: o.name })}>
+                  對話
+                </button>
                 <button className="btn-ghost" onClick={() => recruit(o.id)}>
                   招募
                 </button>
@@ -167,6 +172,9 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
                 {o.name}（忠誠 {o.loyalty}）
                 {o.persona && <span className="block text-xs text-foam/60">{o.persona.description}</span>}
               </span>
+              <button className="btn-ghost" onClick={() => setDialogueTarget({ id: o.id, name: o.name })}>
+                對話
+              </button>
               <select
                 className="input w-32 py-1"
                 value={o.role ?? ""}
@@ -228,6 +236,15 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
           </button>
         </div>
       </div>
+      {dialogueTarget && (
+        <DialoguePanel
+          worldId={worldId}
+          targetType="OFFICER"
+          targetId={dialogueTarget.id}
+          targetName={dialogueTarget.name}
+          onClose={() => setDialogueTarget(null)}
+        />
+      )}
     </div>
   );
 }
