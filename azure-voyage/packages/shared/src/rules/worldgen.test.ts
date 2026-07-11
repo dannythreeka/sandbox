@@ -9,15 +9,15 @@ import { startingGold } from "../content/constants";
 import { buildNewWorldPlan } from "./worldgen";
 
 describe("content pack integrity", () => {
-  it("has exactly 7 regions, 40 ports, 36 commodities, 10 ship classes", () => {
+  it("has exactly 7 regions, 15 ports, 36 commodities, 10 ship classes", () => {
     expect(REGION_IDS).toHaveLength(7);
-    expect(PORTS).toHaveLength(40);
+    expect(PORTS).toHaveLength(15);
     expect(COMMODITY_IDS).toHaveLength(36);
     expect(SHIP_CLASSES).toHaveLength(10);
   });
 
   it("port ids are unique and reference valid regions/commodities", () => {
-    expect(new Set(PORTS.map((p) => p.id)).size).toBe(40);
+    expect(new Set(PORTS.map((p) => p.id)).size).toBe(PORTS.length);
     for (const port of PORTS) {
       expect(REGION_IDS).toContain(port.regionId);
       for (const c of port.produces) expect(() => commodityById(c)).not.toThrow();
@@ -48,9 +48,9 @@ describe("buildNewWorldPlan", () => {
     expect(buildNewWorldPlan(5, "HARD").playerGold).toBe(startingGold("HARD"));
   });
 
-  it("covers all 40 ports with valid markets", () => {
+  it("covers all ports with valid markets", () => {
     const plan = buildNewWorldPlan(99, "NORMAL");
-    expect(plan.ports).toHaveLength(40);
+    expect(plan.ports).toHaveLength(PORTS.length);
     for (const port of plan.ports) {
       expect(port.market.length).toBeGreaterThanOrEqual(4);
       const ids = port.market.map((m) => m.commodityId);

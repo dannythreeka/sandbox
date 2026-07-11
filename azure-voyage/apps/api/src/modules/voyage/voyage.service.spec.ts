@@ -20,7 +20,7 @@ import {
 import type { PrismaService } from "../../prisma/prisma.service";
 import { VoyageService, WORLD_ARRIVAL_EVENT, WORLD_TICK_EVENT } from "./voyage.service";
 
-const NORTH_PORT_ID = "port.north_reach.seskar"; // 距首都較近的一個港口，供路徑測試
+const NORTH_PORT_ID = "port.north_reach.valdren"; // 距首都較近的一個港口，供路徑測試
 
 /** 在指定座標附近找一個符合條件的格子（掃固定範圍，內容地圖不變則結果確定） */
 function findHexNear(origin: OffsetCoord, ok: (c: OffsetCoord) => boolean): OffsetCoord {
