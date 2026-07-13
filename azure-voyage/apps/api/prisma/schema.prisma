@@ -270,6 +270,9 @@ model Battle {
   id          String       @id @default(cuid())
   worldId     String
   world       GameWorld    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  // 玩家艦隊 id（bug 修復：讓「重新連線時我的艦隊是否還在一場進行中的海戰裡」可查，
+  // 不必再拿艦隊船隻 id 去逐一比對 state.units；舊資料/系統戰鬥可能沒有，留 nullable）。
+  fleetId     String?
   status      BattleStatus @default(ONGOING)
   seed        Int
   round       Int          @default(1)
@@ -278,6 +281,7 @@ model Battle {
   actionLog   Json         @default("[]")
 
   @@index([worldId, status])
+  @@index([worldId, fleetId, status])
 }
 
 // ─────────────────────── 發現物 ───────────────────────

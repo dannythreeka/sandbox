@@ -61,11 +61,13 @@ describe("EncounterService.rollEncounters", () => {
       if (battles.length > 0) {
         found = true;
         expect(fleetUpdates).toContainEqual({ activity: "IN_BATTLE" });
-        const battleData = battles[0] as { state: { units: { side: string }[] } };
+        const battleData = battles[0] as { fleetId: string; state: { units: { side: string }[] } };
         const playerUnits = battleData.state.units.filter((u) => u.side === "PLAYER");
         const enemyUnits = battleData.state.units.filter((u) => u.side === "ENEMY");
         expect(playerUnits).toHaveLength(1);
         expect(enemyUnits.length).toBeGreaterThanOrEqual(1);
+        // bug 修復：battle 要記下 fleetId，重新連線時才查得到「我的艦隊在哪場海戰裡」
+        expect(battleData.fleetId).toBe("f1");
       }
     }
     expect(found).toBe(true);

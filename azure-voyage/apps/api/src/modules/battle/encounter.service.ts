@@ -98,6 +98,7 @@ export class EncounterService {
       const battle = await this.prisma.battle.create({
         data: {
           worldId,
+          fleetId: fleet.id,
           seed: battleSeed,
           startedTick: tick,
           state: auto.state as unknown as Prisma.InputJsonValue,

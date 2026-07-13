@@ -278,6 +278,14 @@ export class WorldService {
       );
     }
 
+    // bug 修復：重新連線時要能知道「我的艦隊是否還在一場進行中的海戰裡」，否則前端
+    // 沒收到當初那次 SERVER_BATTLE_START 推播的話，會永遠卡在 IN_BATTLE 卻沒有戰鬥畫面。
+    const ongoingBattles = await this.prisma.battle.findMany({
+      where: { worldId, status: "ONGOING", fleetId: { in: fleets.map((f) => f.id) } },
+      select: { id: true, fleetId: true },
+    });
+    const activeBattleIdByFleetId = new Map(ongoingBattles.map((b) => [b.fleetId!, b.id]));
+
     const playerGuild = guilds.find((g) => g.kind === "PLAYER");
     if (!playerGuild) throw new GameError("INTERNAL", "world has no player guild");
 
@@ -309,6 +317,7 @@ export class WorldService {
         food: f.food,
         water: f.water,
         morale: f.morale,
+        activeBattleId: activeBattleIdByFleetId.get(f.id) ?? null,
         ships: f.ships.map((s) => ({
           id: s.id,
           shipClassId: s.shipClassId,
