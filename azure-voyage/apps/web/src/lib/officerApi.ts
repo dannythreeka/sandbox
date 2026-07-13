@@ -4,6 +4,8 @@ import type {
   BuildShipInput,
   RepairInput,
   SellShipInput,
+  SplitFleetInput,
+  SplitFleetResult,
   TavernOfficerView,
 } from "@azure-voyage/shared";
 import { API_BASE } from "./api";
@@ -55,4 +57,6 @@ export const officerApi = {
       "POST",
       input,
     ),
+  splitFleet: (worldId: string, portId: string, input: SplitFleetInput) =>
+    req<SplitFleetResult>(`/worlds/${worldId}/ports/${portId}/shipyard/split-fleet`, "POST", input),
 };

@@ -52,3 +52,19 @@ export const SellShipInputSchema = z.object({
   shipId: z.string().min(1),
 });
 export type SellShipInput = z.infer<typeof SellShipInputSchema>;
+
+// ── 多艦隊管理（M29）──
+
+/** 從既有艦隊分出部分船隻（可選帶走部分航海士）成立一支新艦隊，停靠在同一港口。 */
+export const SplitFleetInputSchema = z.object({
+  sourceFleetId: z.string().min(1),
+  shipIds: z.array(z.string().min(1)).min(1),
+  officerIds: z.array(z.string().min(1)).default([]),
+  name: z.string().min(1).max(30),
+});
+export type SplitFleetInput = z.infer<typeof SplitFleetInputSchema>;
+
+export const SplitFleetResultSchema = z.object({
+  fleetId: z.string(),
+});
+export type SplitFleetResult = z.infer<typeof SplitFleetResultSchema>;

@@ -62,6 +62,10 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
   const [shipName, setShipName] = useState("");
   const [shipClassId, setShipClassId] = useState(SHIP_CLASSES[0].id);
   const [dialogueTarget, setDialogueTarget] = useState<{ id: string; name: string } | null>(null);
+  // M29：多艦隊管理——分艦時勾選要帶走的船／航海士，與新艦隊名稱
+  const [splitShipIds, setSplitShipIds] = useState<string[]>([]);
+  const [splitOfficerIds, setSplitOfficerIds] = useState<string[]>([]);
+  const [splitName, setSplitName] = useState("");
 
   useEffect(() => {
     officerApi
@@ -122,6 +126,34 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
     }
   }
 
+  function toggleSplitShip(shipId: string) {
+    setSplitShipIds((prev) => (prev.includes(shipId) ? prev.filter((id) => id !== shipId) : [...prev, shipId]));
+  }
+
+  function toggleSplitOfficer(officerId: string) {
+    setSplitOfficerIds((prev) =>
+      prev.includes(officerId) ? prev.filter((id) => id !== officerId) : [...prev, officerId],
+    );
+  }
+
+  async function splitFleet() {
+    setError(null);
+    try {
+      await officerApi.splitFleet(worldId, portId, {
+        sourceFleetId: fleet.id,
+        shipIds: splitShipIds,
+        officerIds: splitOfficerIds,
+        name: splitName || "新艦隊",
+      });
+      setSplitShipIds([]);
+      setSplitOfficerIds([]);
+      setSplitName("");
+      onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "分艦失敗");
+    }
+  }
+
   return (
     <div className="grid gap-6 md:grid-cols-2">
       {error && <p className="text-sm text-red-400 md:col-span-2">{error}</p>}
@@ -167,6 +199,15 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
               className="flex items-center gap-3 rounded-md border border-foam/20 p-2 text-sm"
               title={o.persona?.greeting}
             >
+              {fleet.ships.length >= 2 && (
+                <input
+                  type="checkbox"
+                  className="accent-gold"
+                  title="分艦時帶走這位航海士"
+                  checked={splitOfficerIds.includes(o.id)}
+                  onChange={() => toggleSplitOfficer(o.id)}
+                />
+              )}
               <OfficerAvatar portrait={o.portrait} name={o.name} />
               <span className="flex-1">
                 {o.name}（Lv.{officerLevel(o.exp)}・忠誠 {o.loyalty}）
@@ -197,6 +238,15 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
         <ul className="mb-4 space-y-2">
           {fleet.ships.map((s) => (
             <li key={s.id} className="flex items-center gap-3 rounded-md border border-foam/20 p-2 text-sm">
+              {fleet.ships.length >= 2 && (
+                <input
+                  type="checkbox"
+                  className="accent-gold"
+                  title="分艦時帶走這艘船"
+                  checked={splitShipIds.includes(s.id)}
+                  onChange={() => toggleSplitShip(s.id)}
+                />
+              )}
               <ShipClassThumb shipClassId={s.shipClassId} name={s.name} />
               <span className="flex-1">
                 {s.isFlagship ? "⚓ " : ""}
@@ -213,6 +263,25 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
             </li>
           ))}
         </ul>
+
+        {fleet.ships.length >= 2 && (
+          <div className="mb-4 rounded-md border border-foam/20 p-3">
+            <h4 className="mb-2 font-medium text-slate-200">
+              分艦（M29：勾選上面要帶走的船／航海士，組成一支新艦隊）
+            </h4>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                className="input w-40"
+                placeholder="新艦隊名稱"
+                value={splitName}
+                onChange={(e) => setSplitName(e.target.value)}
+              />
+              <button className="btn" disabled={splitShipIds.length === 0} onClick={splitFleet}>
+                分出新艦隊（{splitShipIds.length} 船・{splitOfficerIds.length} 航海士）
+              </button>
+            </div>
+          </div>
+        )}
         <div className="flex flex-wrap items-end gap-2">
           <ShipClassThumb
             shipClassId={shipClassId}

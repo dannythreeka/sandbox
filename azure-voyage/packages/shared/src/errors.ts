@@ -32,6 +32,8 @@ export const ERROR_CODES = [
   // 航海士與造船廠（M4）
   "OFFICER_UNAVAILABLE",
   "CANNOT_SELL_LAST_SHIP",
+  // 多艦隊管理（M29）
+  "CANNOT_SPLIT_ALL_SHIPS",
   // 海戰（M5）
   "BATTLE_ACTION_INVALID",
   "BATTLE_NOT_ACTIVE",
@@ -85,6 +87,7 @@ export const ERROR_MESSAGES_ZH_TW: Record<ErrorCode, string> = {
   COMMODITY_UNAVAILABLE: "此港口不販售此商品",
   OFFICER_UNAVAILABLE: "此航海士目前無法招募",
   CANNOT_SELL_LAST_SHIP: "無法賣出艦隊僅存的最後一艘船",
+  CANNOT_SPLIT_ALL_SHIPS: "不能把艦隊裡所有的船都分出去，至少要留一艘",
   BATTLE_ACTION_INVALID: "無效的戰鬥行動",
   BATTLE_NOT_ACTIVE: "戰鬥已結束",
   NOT_NEAR_DISCOVERY_SITE: "附近沒有可探索的發現物",

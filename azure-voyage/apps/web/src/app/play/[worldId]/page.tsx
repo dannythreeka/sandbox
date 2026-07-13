@@ -40,6 +40,7 @@ import { getAccessToken } from "@/lib/auth";
 import { createGameSocket } from "@/lib/socket";
 import { SeaMap } from "@/game/SeaMap";
 import { FleetOverviewPanel } from "@/game/FleetOverviewPanel";
+import { FleetSwitcher } from "@/game/FleetSwitcher";
 import { TradePanel } from "@/game/TradePanel";
 import { PortNotablePanel } from "@/game/PortNotablePanel";
 import { TradeRoutePanel } from "@/game/TradeRoutePanel";
@@ -141,6 +142,8 @@ export default function PlayPage() {
   const [codexOpen, setCodexOpen] = useState(false);
   const [captainOpen, setCaptainOpen] = useState(false);
   const [questCutscene, setQuestCutscene] = useState<ServerQuestChapterPayload | null>(null);
+  // M29：多艦隊管理——玩家目前選擇操作的艦隊；null 表示尚未選過，預設第一支
+  const [selectedFleetId, setSelectedFleetId] = useState<string | null>(null);
   const [openingNarrative, setOpeningNarrative] = useState<string | null>(null);
   // M14：每次遞增觸發一次海圖的全屏閃光＋震動（風暴事件實際觸發時）
   const [stormFlashTrigger, setStormFlashTrigger] = useState(0);
@@ -295,11 +298,14 @@ export default function PlayPage() {
     };
   }, [worldId, router]);
 
-  // bug 修復：重新連線／重新整理時，若艦隊其實還卡在一場進行中的海戰裡
-  // （沒收到當初那次 SERVER_BATTLE_START 推播），主動把戰鬥畫面接回來，
+  const fleet = snapshot?.fleets.find((f) => f.id === selectedFleetId) ?? snapshot?.fleets[0];
+  playerFleetIdRef.current = fleet?.id ?? playerFleetIdRef.current;
+
+  // bug 修復：重新連線／重新整理時，若（目前選擇的）艦隊其實還卡在一場進行中的
+  // 海戰裡（沒收到當初那次 SERVER_BATTLE_START 推播），主動把戰鬥畫面接回來，
   // 而不是讓玩家看到正常海圖卻永遠無法動彈。
   useEffect(() => {
-    const activeBattleId = snapshot?.fleets[0]?.activeBattleId;
+    const activeBattleId = fleet?.activeBattleId;
     if (!activeBattleId || battleId) return;
     api
       .getBattle(worldId, activeBattleId)
@@ -308,10 +314,22 @@ export default function PlayPage() {
         setBattleState(battle.state);
       })
       .catch(() => undefined);
-  }, [snapshot, worldId, battleId]);
+  }, [fleet?.activeBattleId, worldId, battleId]);
 
-  const fleet = snapshot?.fleets[0];
-  playerFleetIdRef.current = fleet?.id ?? playerFleetIdRef.current;
+  /** M29：切換操作中的艦隊——清掉屬於「上一支艦隊」的暫存畫面狀態，避免混淆。 */
+  function switchFleet(fleetId: string) {
+    if (fleetId === selectedFleetId) return;
+    setSelectedFleetId(fleetId);
+    setFleetDelta(null);
+    setRoute(null);
+    setPendingHeading(null);
+    setBattleId(null);
+    setBattleState(null);
+    setBattleLog([]);
+    latestFleetRef.current = null;
+    tripStartRef.current = null;
+    tripEventCountRef.current = 0;
+  }
   const activity = fleetDelta?.activity ?? fleet?.activity;
   const pos = fleetDelta?.pos ?? fleet?.pos;
   const food = fleetDelta?.food ?? fleet?.food ?? 0;
@@ -733,6 +751,8 @@ export default function PlayPage() {
               </button>
             </div>
           </section>
+
+          <FleetSwitcher fleets={snapshot.fleets} selectedFleetId={fleet.id} onSelect={switchFleet} />
 
           <section className="panel py-2 text-sm text-slate-300">
             {snapshot.quest.completed ? (
