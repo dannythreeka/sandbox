@@ -112,6 +112,12 @@ describe("world schemas", () => {
       ],
       npcGuilds: [{ id: "g2", name: "霜港同盟", color: "#7fb8d4", fame: 0 }],
       victoryProgress: { regionsDominated: 0, relicsFound: 0, totalAssets: 10000 },
+      quest: {
+        chapterIndex: 0,
+        totalChapters: 6,
+        completed: false,
+        currentChapter: { id: "ch1", title: "初出茅廬", objective: "完成第一筆交易，讓商會的名字開始在琥珀灣流傳" },
+      },
     };
     expect(WorldSnapshotSchema.safeParse(snapshot).success).toBe(true);
   });

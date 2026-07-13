@@ -10,6 +10,7 @@ import { InfluenceService } from "../influence/influence.service";
 import { EconomyService } from "../market/economy.service";
 import { NpcService } from "../npc/npc.service";
 import { OfficerService } from "../officer/officer.service";
+import { QuestService } from "../quest/quest.service";
 import { VictoryService } from "../victory/victory.service";
 import { VoyageService } from "../voyage/voyage.service";
 
@@ -36,6 +37,7 @@ export class WorldTickProcessor extends WorkerHost {
     private readonly npcService: NpcService,
     private readonly influenceService: InfluenceService,
     private readonly victoryService: VictoryService,
+    private readonly questService: QuestService,
     private readonly npcStrategyService: NpcStrategyService,
     private readonly eventGenService: EventGenService,
     private readonly personaService: PersonaService,
@@ -60,6 +62,7 @@ export class WorldTickProcessor extends WorkerHost {
       await this.npcService.actAll(worldId, last.tick);
       await this.influenceService.settleAllPorts(worldId);
       await this.victoryService.checkVictory(worldId, last.tick);
+      await this.questService.checkProgress(worldId, last.tick);
     }
     return last!;
   }

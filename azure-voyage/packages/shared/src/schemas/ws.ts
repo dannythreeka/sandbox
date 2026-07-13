@@ -20,6 +20,7 @@ export const WS_EVENTS = {
   BATTLE_UPDATE: "battle:update",
   BATTLE_END: "battle:end",
   SERVER_VICTORY: "server:victory",
+  SERVER_QUEST_CHAPTER: "server:quest-chapter",
 } as const;
 
 export const ClientJoinSchema = z.object({
@@ -57,3 +58,14 @@ export const ServerVictorySchema = z.object({
   reason: z.enum(["REGION_DOMINANCE", "ASSET_TARGET", "RELIC_COLLECTOR"]),
 });
 export type ServerVictoryPayload = z.infer<typeof ServerVictorySchema>;
+
+/** 主線任務章節完成推播（M28）：帶完整章節內容，前端不必另外查表。 */
+export const ServerQuestChapterSchema = z.object({
+  tick: z.number().int().nonnegative(),
+  chapterId: z.string(),
+  title: z.string(),
+  narrative: z.string(),
+  goldReward: z.number().int(),
+  fameReward: z.number().int(),
+});
+export type ServerQuestChapterPayload = z.infer<typeof ServerQuestChapterSchema>;
