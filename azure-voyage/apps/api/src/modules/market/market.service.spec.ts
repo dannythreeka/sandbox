@@ -1,4 +1,12 @@
-import { computeMarketPrice, effectiveBuyPrice, effectiveSellPrice } from "@azure-voyage/shared";
+import {
+  BALANCE,
+  captainTradeBonus,
+  computeMarketPrice,
+  effectiveBuyPrice,
+  effectiveSellPrice,
+} from "@azure-voyage/shared";
+
+const DEFAULT_CAPTAIN_TRADE_BONUS = captainTradeBonus(BALANCE.CAPTAIN_STARTING_STAT);
 import type { PrismaService } from "../../prisma/prisma.service";
 import { MarketService } from "./market.service";
 
@@ -30,15 +38,27 @@ function makePrisma(state: FakeState) {
     $transaction: jest.fn(async (fn: (tx: unknown) => unknown) => fn(tx)),
   } as unknown as PrismaService;
 
+  const guildRow = {
+    id: "g1",
+    captainExp: 0,
+    captainLead: 20,
+    captainNav: 20,
+    captainCombat: 20,
+    captainTrade: 20,
+    captainLore: 20,
+  };
+
   const tx = {
     fleet: { findUnique: jest.fn(async () => fleet) },
     ship: {
       findUnique: jest.fn(async () => ({ ...ship, cargo: state.cargo.filter((c) => c.shipId === "s1") })),
     },
     guild: {
-      findUniqueOrThrow: jest.fn(async () => ({ id: "g1", gold: BigInt(state.gold) })),
-      update: jest.fn(async ({ data }: { data: { gold: bigint } }) => {
-        state.gold = Number(data.gold);
+      findUniqueOrThrow: jest.fn(async () => ({ ...guildRow, gold: BigInt(state.gold) })),
+      update: jest.fn(async ({ data }: { data: Partial<typeof guildRow> & { gold?: bigint } }) => {
+        const { gold, ...rest } = data;
+        if (gold !== undefined) state.gold = Number(gold);
+        Object.assign(guildRow, rest);
       }),
     },
     portState: {
@@ -102,7 +122,7 @@ describe("MarketService.trade", () => {
       orders: [{ commodityId: COMMODITY_ID, side: "BUY", quantity: 10 }],
     });
 
-    const expectedUnit = effectiveBuyPrice(85, 0);
+    const expectedUnit = effectiveBuyPrice(85, 0, DEFAULT_CAPTAIN_TRADE_BONUS);
     expect(result.fills[0]).toMatchObject({ side: "BUY", quantity: 10, unitPrice: expectedUnit });
     expect(result.goldRemaining).toBe(10000 - expectedUnit * 10);
     expect(state.marketStock.stock).toBe(290);
@@ -193,7 +213,7 @@ describe("MarketService.trade", () => {
       shipId: "s1",
       orders: [{ commodityId: COMMODITY_ID, side: "SELL", quantity: 5 }],
     });
-    const expectedUnit = effectiveSellPrice(85, 0);
+    const expectedUnit = effectiveSellPrice(85, 0, DEFAULT_CAPTAIN_TRADE_BONUS);
     expect(result.fills[0]).toMatchObject({ side: "SELL", quantity: 5, unitPrice: expectedUnit });
     expect(state.cargo).toHaveLength(0); // 賣光後 slot 應被移除
     expect(state.marketStock.stock).toBe(305);

@@ -47,6 +47,7 @@ import { BattleScene } from "@/game/BattleScene";
 import { ExplorationPanel } from "@/game/ExplorationPanel";
 import { DiscoveryPanel } from "@/game/DiscoveryPanel";
 import { DiscoveryCodexPanel } from "@/game/DiscoveryCodexPanel";
+import { CaptainPanel } from "@/game/CaptainPanel";
 import { InfluencePanel } from "@/game/InfluencePanel";
 import { PortCutscene, type CutsceneState } from "@/game/PortCutscene";
 import { GameArt } from "@/game/GameArt";
@@ -136,6 +137,7 @@ export default function PlayPage() {
   const [victory, setVictory] = useState<ServerVictoryPayload | null>(null);
   const [cutscene, setCutscene] = useState<CutsceneState | null>(null);
   const [codexOpen, setCodexOpen] = useState(false);
+  const [captainOpen, setCaptainOpen] = useState(false);
   const [openingNarrative, setOpeningNarrative] = useState<string | null>(null);
   // M14：每次遞增觸發一次海圖的全屏閃光＋震動（風暴事件實際觸發時）
   const [stormFlashTrigger, setStormFlashTrigger] = useState(0);
@@ -670,7 +672,15 @@ export default function PlayPage() {
               <h1 className="text-xl font-bold text-foam">{snapshot.world.name}</h1>
               <p className="text-sm text-slate-400">
                 第 <span className="font-mono text-gold">{tick ?? snapshot.world.currentTick}</span>{" "}
-                日 · {snapshot.playerGuild.name} · 資金{" "}
+                日 ·{" "}
+                <button
+                  className="text-gold underline decoration-dotted underline-offset-2"
+                  onClick={() => setCaptainOpen(true)}
+                  title="查看提督狀態"
+                >
+                  {snapshot.playerGuild.captain.title}
+                </button>{" "}
+                {snapshot.playerGuild.name} · 資金{" "}
                 <span className="font-mono text-gold">
                   {snapshot.playerGuild.gold.toLocaleString("zh-TW")}
                 </span>
@@ -718,6 +728,9 @@ export default function PlayPage() {
           </section>
 
           {codexOpen && <DiscoveryCodexPanel worldId={worldId} onClose={() => setCodexOpen(false)} />}
+          {captainOpen && (
+            <CaptainPanel captain={snapshot.playerGuild.captain} onClose={() => setCaptainOpen(false)} />
+          )}
 
           <SeaMap
             fleetPos={fleetOffsetPos}

@@ -71,13 +71,22 @@ function makeFleet(overrides: Partial<Fleet> = {}): Fleet {
   } as Fleet;
 }
 
+const DEFAULT_CAPTAIN = {
+  captainExp: 0,
+  captainLead: 20,
+  captainNav: 20,
+  captainCombat: 20,
+  captainTrade: 20,
+  captainLore: 20,
+};
+
 function makePrismaMock(state: {
   fleet: Fleet;
   world?: { currentTick: number; status: string };
   guild?: { gold: bigint };
 }) {
   const world = state.world ?? { currentTick: 0, status: "ACTIVE" };
-  const guild = state.guild ?? { gold: 10000n };
+  const guild = { ...DEFAULT_CAPTAIN, ...(state.guild ?? { gold: 10000n }) };
   const ships = [{ id: "s1", fleetId: state.fleet.id, shipClassId: "ship.lugger", crew: 8 }];
   const prisma = {
     gameWorld: {
@@ -90,15 +99,17 @@ function makePrismaMock(state: {
     },
     guild: {
       findUniqueOrThrow: jest.fn(async () => ({ id: "g1", kind: "PLAYER", ...guild })),
-      update: jest.fn(async ({ data }: { data: { gold: bigint } }) => {
-        guild.gold = data.gold;
+      update: jest.fn(async ({ data }: { data: Partial<typeof guild> }) => {
+        Object.assign(guild, data);
         return { id: "g1", ...guild };
       }),
     },
     fleet: {
-      findUnique: jest.fn(async () => ({ ...state.fleet, guild: { kind: "PLAYER" } })),
+      findUnique: jest.fn(async () => ({ ...state.fleet, guild: { kind: "PLAYER", ...guild } })),
       findMany: jest.fn(async () =>
-        state.fleet.activity === "SAILING" ? [{ ...state.fleet, ships, officers: [] }] : [],
+        state.fleet.activity === "SAILING"
+          ? [{ ...state.fleet, ships, officers: [], guild: { kind: "PLAYER", ...guild } }]
+          : [],
       ),
       update: jest.fn(async ({ data }: { data: Partial<Fleet> }) => {
         // 真實 Prisma 只會更新 data 內出現的欄位；純 JS mock 需自行還原這個語意，

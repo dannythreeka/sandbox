@@ -103,6 +103,35 @@ export const BALANCE = {
   LOOKOUT_DANGER_REDUCTION_PER_LORE: 0.004,
   LOOKOUT_DANGER_REDUCTION_MAX: 0.4,
 
+  // ── 提督（艦長）個人成長系統（M27，往大航海時代靠近：玩家角色本人的 RPG 化）──
+  /** 提督起始五維（統率/航海/戰鬥/商才/學識），對照官員成長曲線但獨立累計 */
+  CAPTAIN_STARTING_STAT: 20,
+  /** 每滿此經驗值升一級；升級時全體屬性 +1（上限 100） */
+  CAPTAIN_EXP_PER_LEVEL: 200,
+  /** 航行抵達港口，提督獲得的經驗值 */
+  CAPTAIN_EXP_PER_ARRIVAL: 4,
+  /** 完成一筆交易，提督獲得的經驗值 */
+  CAPTAIN_EXP_PER_TRADE: 6,
+  /** 海戰獲勝，提督獲得的經驗值 */
+  CAPTAIN_EXP_PER_BATTLE_WIN: 20,
+  /** 登錄一件發現物，提督獲得的經驗值 */
+  CAPTAIN_EXP_PER_DISCOVERY: 15,
+  /** 提督航海（nav）：艦隊航速加成 = nav × 此係數（上限見下，與航海長職位加成疊加） */
+  CAPTAIN_NAV_SPEED_BONUS_PER_NAV: 0.002,
+  CAPTAIN_NAV_SPEED_BONUS_MAX: 0.2,
+  /** 提督戰鬥（combat）：砲擊傷害加成 = combat × 此係數（上限見下，與炮術長職位加成疊加） */
+  CAPTAIN_COMBAT_DAMAGE_BONUS_PER_COMBAT: 0.002,
+  CAPTAIN_COMBAT_DAMAGE_BONUS_MAX: 0.2,
+  /** 提督商才（trade）：買賣折扣加成 = trade × 此係數（上限見下，與會計長職位加成疊加） */
+  CAPTAIN_TRADE_BONUS_PER_TRADE: 0.0004,
+  CAPTAIN_TRADE_BONUS_MAX: 0.04,
+  /** 提督學識（lore）：風暴／海賊遭遇機率降低比例 = lore × 此係數（上限見下，與瞭望員職位加成疊加） */
+  CAPTAIN_DANGER_REDUCTION_PER_LORE: 0.0025,
+  CAPTAIN_DANGER_REDUCTION_MAX: 0.25,
+  /** 提督統率（lead）：欠薪忠誠度懲罰的減免比例 = lead × 此係數（上限見下，與副官職位加成疊加） */
+  CAPTAIN_LEAD_LOYALTY_MITIGATION_PER_LEAD: 0.004,
+  CAPTAIN_LEAD_LOYALTY_MITIGATION_MAX: 0.4,
+
   // ── 造船廠（M4 起使用）──
   /** 修理費：每點缺損耐久的金額 */
   REPAIR_COST_PER_HULL: 15,

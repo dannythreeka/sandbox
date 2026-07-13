@@ -110,6 +110,21 @@ export const NpcGuildPublicViewSchema = z.object({
 });
 export type NpcGuildPublicView = z.infer<typeof NpcGuildPublicViewSchema>;
 
+/** 提督（艦長）個人成長狀態（M27）：玩家角色本人的五維與等級，區別於雇用的官員。 */
+export const CaptainViewSchema = z.object({
+  exp: z.number().int(),
+  level: z.number().int(),
+  title: z.string(),
+  stats: z.object({
+    lead: z.number().int(),
+    nav: z.number().int(),
+    combat: z.number().int(),
+    trade: z.number().int(),
+    lore: z.number().int(),
+  }),
+});
+export type CaptainView = z.infer<typeof CaptainViewSchema>;
+
 export const WorldSnapshotSchema = z.object({
   world: WorldSummarySchema.extend({ seed: z.number().int() }),
   playerGuild: z.object({
@@ -117,6 +132,7 @@ export const WorldSnapshotSchema = z.object({
     name: z.string(),
     gold: z.number().int(), // 金額整數；API 層以 number 傳輸（< 2^53 安全）
     fame: z.number().int(),
+    captain: CaptainViewSchema,
   }),
   fleets: z.array(FleetViewSchema),
   knownPorts: z.array(PortSummarySchema),

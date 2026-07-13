@@ -37,7 +37,19 @@ function makePrisma(overrides: { fleetActivity?: string; lore?: number; alreadyF
     registered: false,
     narrative: null,
   }));
-  const guild = { id: "g1", worldId: "w1", kind: "PLAYER", gold: 1000n, fame: 0 };
+  const guild = {
+    id: "g1",
+    worldId: "w1",
+    kind: "PLAYER",
+    gold: 1000n,
+    fame: 0,
+    captainExp: 0,
+    captainLead: 20,
+    captainNav: 20,
+    captainCombat: 20,
+    captainTrade: 20,
+    captainLore: 20,
+  };
 
   const prisma = {
     gameWorld: { findUnique: jest.fn(async () => world) },
@@ -69,10 +81,18 @@ function makePrisma(overrides: { fleetActivity?: string; lore?: number; alreadyF
     },
     guild: {
       findFirstOrThrow: jest.fn(async () => guild),
-      update: jest.fn(async ({ data }: { data: { gold: bigint; fame: { increment: number } } }) => {
-        guild.gold = data.gold;
-        guild.fame += data.fame.increment;
-      }),
+      findUniqueOrThrow: jest.fn(async () => guild),
+      update: jest.fn(
+        async ({
+          data,
+        }: {
+          data: Partial<typeof guild> & { gold?: bigint; fame?: { increment: number } };
+        }) => {
+          const { fame, ...rest } = data;
+          if (fame !== undefined) guild.fame += fame.increment;
+          Object.assign(guild, rest);
+        },
+      ),
     },
     $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)),
   } as unknown as PrismaService;

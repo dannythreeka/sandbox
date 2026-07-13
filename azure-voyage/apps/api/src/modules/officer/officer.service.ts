@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import {
   BALANCE,
+  captainLoyaltyMitigation,
   firstMateLoyaltyMitigation,
   type AssignRoleInput,
   type OfficerStats,
@@ -96,10 +97,12 @@ export class OfficerService {
           data: { gold: BigInt(gold - totalSalary) },
         });
       } else {
-        // 副官（FIRST_MATE）：坐鎮時減緩欠薪對忠誠度的衝擊（M23）
+        // 副官（FIRST_MATE）＋提督統率（M27）：坐鎮時減緩欠薪對忠誠度的衝擊，兩者疊加
         const firstMate = fleet.officers.find((o) => o.role === "FIRST_MATE");
-        const mitigation = firstMateLoyaltyMitigation(
-          (firstMate?.stats as unknown as OfficerStats | undefined)?.lead,
+        const mitigation = Math.min(
+          1,
+          firstMateLoyaltyMitigation((firstMate?.stats as unknown as OfficerStats | undefined)?.lead) +
+            captainLoyaltyMitigation(fleet.guild.captainLead),
         );
         const penalty = Math.round(BALANCE.LOYALTY_PENALTY_UNPAID * (1 - mitigation));
         await this.prisma.$transaction(

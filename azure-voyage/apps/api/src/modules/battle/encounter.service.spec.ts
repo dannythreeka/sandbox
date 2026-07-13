@@ -12,6 +12,7 @@ function makePrisma(fleetPos: { q: number; r: number }, seed: number) {
     posR: fleetPos.r,
     ships: [{ id: "s1", shipClassId: "ship.lugger", name: "旗艦", hull: 55, crew: 8 }],
     officers: [] as { id: string; role: string | null; stats: unknown }[],
+    guild: { captainLead: 20, captainNav: 20, captainCombat: 20, captainTrade: 20, captainLore: 20 },
   };
   const battles: unknown[] = [];
   const fleetUpdates: { activity: string }[] = [];
@@ -88,6 +89,7 @@ describe("EncounterService.rollEncounters", () => {
           posR: dangerousAxial.r,
           ships: [{ id: "s1", shipClassId: "ship.lugger", name: "旗艦", hull: 55, crew: 8 }],
           officers: [{ id: "o1", role: "GUNNER", stats: { combat: 80 } }],
+          guild: { captainLead: 20, captainNav: 20, captainCombat: 20, captainTrade: 20, captainLore: 20 },
         },
       ]);
       const service = new EncounterService(prisma, { emit: jest.fn() } as never);
@@ -122,6 +124,7 @@ describe("EncounterService.rollEncounters", () => {
           posR: dangerousAxial.r,
           ships: [{ id: "s1", shipClassId: "ship.lugger", name: "旗艦", hull: 55, crew: 8 }],
           officers: [{ id: "o1", role: "LOOKOUT", stats: { lore: 100 } }],
+          guild: { captainLead: 20, captainNav: 20, captainCombat: 20, captainTrade: 20, captainLore: 20 },
         },
       ]);
       await new EncounterService(p2, { emit: jest.fn() } as never).rollEncounters("w1", seed);

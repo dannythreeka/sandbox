@@ -3,6 +3,8 @@ import type { GameWorld, Prisma } from "@prisma/client";
 import {
   BALANCE,
   buildNewWorldPlan,
+  captainLevel,
+  captainTitleForLevel,
   CONTENT_VERSION,
   PORT_NOTABLE_TEMPLATES,
   PORTS,
@@ -307,6 +309,18 @@ export class WorldService {
         name: playerGuild.name,
         gold: Number(playerGuild.gold),
         fame: playerGuild.fame,
+        captain: {
+          exp: playerGuild.captainExp,
+          level: captainLevel(playerGuild.captainExp),
+          title: captainTitleForLevel(captainLevel(playerGuild.captainExp)),
+          stats: {
+            lead: playerGuild.captainLead,
+            nav: playerGuild.captainNav,
+            combat: playerGuild.captainCombat,
+            trade: playerGuild.captainTrade,
+            lore: playerGuild.captainLore,
+          },
+        },
       },
       fleets: fleets.map((f) => ({
         id: f.id,

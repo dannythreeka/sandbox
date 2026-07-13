@@ -4,6 +4,8 @@ import {
   axialToOddr,
   autoResolveEnemyTurns,
   BALANCE,
+  captainCombatDamageBonus,
+  captainDangerReduction,
   deriveSeed,
   gunnerDamageBonus,
   initBattleState,
@@ -38,7 +40,7 @@ export class EncounterService {
     const world = await this.prisma.gameWorld.findUniqueOrThrow({ where: { id: worldId } });
     const sailingFleets = await this.prisma.fleet.findMany({
       where: { worldId, activity: "SAILING" },
-      include: { ships: true, officers: true },
+      include: { ships: true, officers: true, guild: true },
     });
 
     for (const fleet of sailingFleets) {
@@ -46,16 +48,23 @@ export class EncounterService {
       const region = regionForCoord(axialToOddr({ q: fleet.posQ, r: fleet.posR }));
       // M14：起霧提高遭遇率（天氣本身用獨立的擲骰流，不影響這裡的遭遇判定）。
       const weather = weatherAtTick(region.id, tick, world.seed);
-      // 瞭望員（LOOKOUT）：降低遭遇機率（M23）
+      // 瞭望員（LOOKOUT）＋提督學識（M27）：降低遭遇機率，兩者疊加
       const lookout = fleet.officers.find((o) => o.role === "LOOKOUT");
-      const dangerReduction = lookoutDangerReduction((lookout?.stats as unknown as OfficerStats | undefined)?.lore);
+      const dangerReduction =
+        lookoutDangerReduction((lookout?.stats as unknown as OfficerStats | undefined)?.lore) +
+        captainDangerReduction(fleet.guild.captainLore);
       const chance =
-        region.danger * BALANCE.ENCOUNTER_CHANCE_PER_DANGER * weatherEncounterMult(weather) * (1 - dangerReduction);
+        region.danger *
+        BALANCE.ENCOUNTER_CHANCE_PER_DANGER *
+        weatherEncounterMult(weather) *
+        (1 - Math.min(1, dangerReduction));
       if (!rng.chance(chance)) continue;
 
-      // 炮術長（GUNNER）：砲擊傷害加成（M23）
+      // 炮術長（GUNNER）＋提督戰鬥（M27）：砲擊傷害加成，兩者疊加
       const gunner = fleet.officers.find((o) => o.role === "GUNNER");
-      const damageBonusPct = gunnerDamageBonus((gunner?.stats as unknown as OfficerStats | undefined)?.combat);
+      const damageBonusPct =
+        gunnerDamageBonus((gunner?.stats as unknown as OfficerStats | undefined)?.combat) +
+        captainCombatDamageBonus(fleet.guild.captainCombat);
       const playerUnits: BattleUnit[] = fleet.ships.map((ship, i) =>
         unitFromShip(
           ship.id,

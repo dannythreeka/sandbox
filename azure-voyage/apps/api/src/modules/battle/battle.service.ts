@@ -17,6 +17,7 @@ import {
 import { Prisma } from "@prisma/client";
 import { GameError } from "../../common/errors/game-error";
 import { awardExpToFleetOfficers } from "../officer/officer-growth.util";
+import { awardCaptainExp } from "../officer/captain-growth.util";
 import { PrismaService } from "../../prisma/prisma.service";
 
 export const BATTLE_UPDATE_EVENT = "battle.update";
@@ -152,6 +153,7 @@ export class BattleService {
       }
       await tx.fleet.update({ where: { id: fleetId }, data: { activity: "SAILING" } });
       await awardExpToFleetOfficers(tx, fleetId, BALANCE.OFFICER_EXP_PER_BATTLE_WIN);
+      await awardCaptainExp(tx, fleet.guildId, BALANCE.CAPTAIN_EXP_PER_BATTLE_WIN);
       return undefined;
     } else if (outcome === "FLED") {
       await tx.fleet.update({ where: { id: fleetId }, data: { activity: "SAILING" } });
