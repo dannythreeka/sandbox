@@ -35,6 +35,7 @@ import {
   type OffsetCoord,
 } from "@azure-voyage/shared";
 import { GameError } from "../../common/errors/game-error";
+import { awardExpToFleetOfficers } from "../officer/officer-growth.util";
 import { PrismaService } from "../../prisma/prisma.service";
 
 export const WORLD_TICK_EVENT = "world.tick";
@@ -312,6 +313,7 @@ export class VoyageService {
 
       if (arrivedPort) {
         arrivals.push({ worldId, payload: { tick: newTick, fleetId: fleet.id, portId: arrivedPortId! } });
+        await awardExpToFleetOfficers(this.prisma, fleet.id, BALANCE.OFFICER_EXP_PER_ARRIVAL);
       }
       if (anchoredAtSea) {
         notices.push(`「${fleet.name}」已抵達目標海域，下錨待命。`);

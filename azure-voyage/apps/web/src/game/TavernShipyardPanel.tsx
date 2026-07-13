@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { OFFICER_ROLES, SHIP_CLASSES, type FleetView, type TavernOfficerView } from "@azure-voyage/shared";
+import { officerLevel, OFFICER_ROLES, SHIP_CLASSES, type FleetView, type TavernOfficerView } from "@azure-voyage/shared";
 import { officerApi } from "@/lib/officerApi";
 import { DialoguePanel } from "./DialoguePanel";
 import { GameArt } from "./GameArt";
@@ -169,7 +169,7 @@ export function TavernShipyardPanel({ worldId, portId, fleet, onChanged }: Props
             >
               <OfficerAvatar portrait={o.portrait} name={o.name} />
               <span className="flex-1">
-                {o.name}（忠誠 {o.loyalty}）
+                {o.name}（Lv.{officerLevel(o.exp)}・忠誠 {o.loyalty}）
                 {o.persona && <span className="block text-xs text-foam/60">{o.persona.description}</span>}
               </span>
               <button className="btn-ghost" onClick={() => setDialogueTarget({ id: o.id, name: o.name })}>

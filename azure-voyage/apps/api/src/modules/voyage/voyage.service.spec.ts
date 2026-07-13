@@ -111,6 +111,10 @@ function makePrismaMock(state: {
         return state.fleet;
       }),
     },
+    officer: {
+      findMany: jest.fn(async () => [] as { id: string; role: string | null; stats: unknown; exp: number }[]),
+      update: jest.fn(),
+    },
     $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)),
   } as unknown as PrismaService;
   return { prisma, guild };
@@ -265,6 +269,27 @@ describe("VoyageService.advanceOneTick", () => {
     expect(fleet.dockedPortId).toBe(NORTH_PORT_ID);
     expect(fleet.route).toBeNull();
     expect(emitted.some((e) => e.event === WORLD_ARRIVAL_EVENT)).toBe(true);
+  });
+
+  it("awards exp to the fleet's officers on arrival (M23)", async () => {
+    const fleet = makeFleet();
+    const { prisma } = makePrismaMock({ fleet });
+    (prisma.officer.findMany as jest.Mock).mockResolvedValue([
+      { id: "o1", exp: 0, stats: { lead: 10, nav: 10, combat: 10, trade: 10, lore: 10 } },
+    ]);
+    const { events } = makeEventsMock();
+    const service = new VoyageService(prisma, events);
+    await service.setRoute("u1", "w1", "f1", { targetPortId: NORTH_PORT_ID });
+    await service.depart("u1", "w1", "f1");
+
+    for (let i = 0; i < 200 && fleet.activity === "SAILING"; i++) {
+      await service.advanceOneTick("w1");
+    }
+
+    expect(fleet.activity).toBe("DOCKED");
+    expect(prisma.officer.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "o1" } }),
+    );
   });
 
   it("reports the daily wind in each sailing fleet's tick delta (M11)", async () => {

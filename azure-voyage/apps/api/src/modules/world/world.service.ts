@@ -320,6 +320,7 @@ export class WorldService {
           skills: o.skills,
           loyalty: o.loyalty,
           salary: o.salary,
+          exp: o.exp,
           persona: (o.persona as WorldSnapshot["fleets"][number]["officers"][number]["persona"]) ?? undefined,
         })),
       })),

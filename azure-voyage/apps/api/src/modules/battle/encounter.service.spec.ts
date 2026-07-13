@@ -11,6 +11,7 @@ function makePrisma(fleetPos: { q: number; r: number }, seed: number) {
     posQ: fleetPos.q,
     posR: fleetPos.r,
     ships: [{ id: "s1", shipClassId: "ship.lugger", name: "旗艦", hull: 55, crew: 8 }],
+    officers: [] as { id: string; role: string | null; stats: unknown }[],
   };
   const battles: unknown[] = [];
   const fleetUpdates: { activity: string }[] = [];
@@ -68,5 +69,62 @@ describe("EncounterService.rollEncounters", () => {
       }
     }
     expect(found).toBe(true);
+  });
+
+  it("applies the gunner damage bonus (M23) to the player unit when a battle starts", async () => {
+    const dangerousAxial = oddrToAxial(portById("port.meridian.zafrahn").coord);
+    let found = false;
+    for (let seed = 0; seed < 500 && !found; seed++) {
+      const { prisma, battles } = makePrisma(dangerousAxial, seed);
+      // 手動塞一位炮術長進艦隊（M23 GUNNER 職位加成）
+      (prisma.fleet.findMany as jest.Mock).mockImplementationOnce(async () => [
+        {
+          id: "f1",
+          worldId: "w1",
+          activity: "SAILING",
+          posQ: dangerousAxial.q,
+          posR: dangerousAxial.r,
+          ships: [{ id: "s1", shipClassId: "ship.lugger", name: "旗艦", hull: 55, crew: 8 }],
+          officers: [{ id: "o1", role: "GUNNER", stats: { combat: 80 } }],
+        },
+      ]);
+      const service = new EncounterService(prisma, { emit: jest.fn() } as never);
+      await service.rollEncounters("w1", seed);
+      if (battles.length > 0) {
+        found = true;
+        const battleData = battles[0] as { state: { units: { side: string; damageBonusPct: number }[] } };
+        const playerUnit = battleData.state.units.find((u) => u.side === "PLAYER")!;
+        expect(playerUnit.damageBonusPct).toBeGreaterThan(0);
+      }
+    }
+    expect(found).toBe(true);
+  });
+
+  it("reduces the encounter trigger rate when the fleet has a lookout (M23)", async () => {
+    const dangerousAxial = oddrToAxial(portById("port.meridian.zafrahn").coord);
+    let withoutLookout = 0;
+    let withLookout = 0;
+    const trials = 300;
+    for (let seed = 0; seed < trials; seed++) {
+      const { prisma: p1, battles: b1 } = makePrisma(dangerousAxial, seed);
+      await new EncounterService(p1, { emit: jest.fn() } as never).rollEncounters("w1", seed);
+      if (b1.length > 0) withoutLookout++;
+
+      const { prisma: p2, battles: b2 } = makePrisma(dangerousAxial, seed);
+      (p2.fleet.findMany as jest.Mock).mockImplementationOnce(async () => [
+        {
+          id: "f1",
+          worldId: "w1",
+          activity: "SAILING",
+          posQ: dangerousAxial.q,
+          posR: dangerousAxial.r,
+          ships: [{ id: "s1", shipClassId: "ship.lugger", name: "旗艦", hull: 55, crew: 8 }],
+          officers: [{ id: "o1", role: "LOOKOUT", stats: { lore: 100 } }],
+        },
+      ]);
+      await new EncounterService(p2, { emit: jest.fn() } as never).rollEncounters("w1", seed);
+      if (b2.length > 0) withLookout++;
+    }
+    expect(withLookout).toBeLessThan(withoutLookout);
   });
 });

@@ -50,6 +50,8 @@ export const OfficerViewSchema = z.object({
   skills: z.array(z.string()),
   loyalty: z.number().int(),
   salary: z.number().int(),
+  /** 累積經驗值（M23，docs/01 §4.5）；前端用 officerLevel() 換算等級 */
+  exp: z.number().int(),
   persona: PersonaGenViewSchema.optional(),
 });
 export type OfficerView = z.infer<typeof OfficerViewSchema>;

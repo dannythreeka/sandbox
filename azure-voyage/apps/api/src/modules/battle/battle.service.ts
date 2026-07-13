@@ -16,6 +16,7 @@ import {
 } from "@azure-voyage/shared";
 import { Prisma } from "@prisma/client";
 import { GameError } from "../../common/errors/game-error";
+import { awardExpToFleetOfficers } from "../officer/officer-growth.util";
 import { PrismaService } from "../../prisma/prisma.service";
 
 export const BATTLE_UPDATE_EVENT = "battle.update";
@@ -146,6 +147,7 @@ export class BattleService {
         await tx.guild.update({ where: { id: guild.id }, data: { gold: guild.gold + BigInt(loot) } });
       }
       await tx.fleet.update({ where: { id: fleetId }, data: { activity: "SAILING" } });
+      await awardExpToFleetOfficers(tx, fleetId, BALANCE.OFFICER_EXP_PER_BATTLE_WIN);
     } else if (outcome === "FLED") {
       await tx.fleet.update({ where: { id: fleetId }, data: { activity: "SAILING" } });
     } else {

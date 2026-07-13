@@ -4,6 +4,7 @@ import {
   axialToOddr,
   BALANCE,
   deriveSeed,
+  lookoutDangerReduction,
   PORTS,
   regionForCoord,
   Rng,
@@ -11,6 +12,7 @@ import {
   weatherAtTick,
   weatherStormEventMult,
   type ServerEventPayload,
+  type OfficerStats,
 } from "@azure-voyage/shared";
 import { PrismaService } from "../../prisma/prisma.service";
 
@@ -29,7 +31,7 @@ export class EventService {
     const world = await this.prisma.gameWorld.findUniqueOrThrow({ where: { id: worldId } });
     const sailingFleets = await this.prisma.fleet.findMany({
       where: { worldId, activity: "SAILING" },
-      include: { ships: true },
+      include: { ships: true, officers: true },
     });
 
     for (const fleet of sailingFleets) {
@@ -37,7 +39,11 @@ export class EventService {
       const region = regionForCoord(axialToOddr({ q: fleet.posQ, r: fleet.posR }));
       // M14：風暴醞釀天氣是預兆，實際觸發仍是這裡的獨立擲骰，只是機率加乘。
       const weather = weatherAtTick(region.id, tick, world.seed);
-      const chance = region.danger * BALANCE.STORM_CHANCE_PER_DANGER * weatherStormEventMult(weather);
+      // 瞭望員（LOOKOUT）：提早察覺天候異狀，降低風暴機率（M23）
+      const lookout = fleet.officers.find((o) => o.role === "LOOKOUT");
+      const dangerReduction = lookoutDangerReduction((lookout?.stats as unknown as OfficerStats | undefined)?.lore);
+      const chance =
+        region.danger * BALANCE.STORM_CHANCE_PER_DANGER * weatherStormEventMult(weather) * (1 - dangerReduction);
       if (!rng.chance(chance)) continue;
 
       for (const ship of fleet.ships) {

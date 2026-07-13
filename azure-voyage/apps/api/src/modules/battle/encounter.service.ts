@@ -5,7 +5,9 @@ import {
   autoResolveEnemyTurns,
   BALANCE,
   deriveSeed,
+  gunnerDamageBonus,
   initBattleState,
+  lookoutDangerReduction,
   regionForCoord,
   Rng,
   shipClassById,
@@ -13,6 +15,7 @@ import {
   weatherAtTick,
   weatherEncounterMult,
   type BattleUnit,
+  type OfficerStats,
 } from "@azure-voyage/shared";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -35,7 +38,7 @@ export class EncounterService {
     const world = await this.prisma.gameWorld.findUniqueOrThrow({ where: { id: worldId } });
     const sailingFleets = await this.prisma.fleet.findMany({
       where: { worldId, activity: "SAILING" },
-      include: { ships: true },
+      include: { ships: true, officers: true },
     });
 
     for (const fleet of sailingFleets) {
@@ -43,9 +46,16 @@ export class EncounterService {
       const region = regionForCoord(axialToOddr({ q: fleet.posQ, r: fleet.posR }));
       // M14：起霧提高遭遇率（天氣本身用獨立的擲骰流，不影響這裡的遭遇判定）。
       const weather = weatherAtTick(region.id, tick, world.seed);
-      const chance = region.danger * BALANCE.ENCOUNTER_CHANCE_PER_DANGER * weatherEncounterMult(weather);
+      // 瞭望員（LOOKOUT）：降低遭遇機率（M23）
+      const lookout = fleet.officers.find((o) => o.role === "LOOKOUT");
+      const dangerReduction = lookoutDangerReduction((lookout?.stats as unknown as OfficerStats | undefined)?.lore);
+      const chance =
+        region.danger * BALANCE.ENCOUNTER_CHANCE_PER_DANGER * weatherEncounterMult(weather) * (1 - dangerReduction);
       if (!rng.chance(chance)) continue;
 
+      // 炮術長（GUNNER）：砲擊傷害加成（M23）
+      const gunner = fleet.officers.find((o) => o.role === "GUNNER");
+      const damageBonusPct = gunnerDamageBonus((gunner?.stats as unknown as OfficerStats | undefined)?.combat);
       const playerUnits: BattleUnit[] = fleet.ships.map((ship, i) =>
         unitFromShip(
           ship.id,
@@ -55,6 +65,7 @@ export class EncounterService {
           { q: -2, r: i - Math.floor(fleet.ships.length / 2) },
           ship.hull,
           ship.crew,
+          damageBonusPct,
         ),
       );
       const enemyCount = region.danger > 0.4 ? 2 : 1;

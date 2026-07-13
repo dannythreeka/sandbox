@@ -83,6 +83,7 @@ describe("world schemas", () => {
               skills: ["skill.cartography"],
               loyalty: 60,
               salary: 120,
+              exp: 0,
             },
           ],
         },
