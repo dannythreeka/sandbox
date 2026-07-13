@@ -179,6 +179,11 @@ export const BALANCE = {
   /** 傳世遺物（S 級發現物）蒐集勝利門檻：登錄滿此數即達成（M22，docs/01 §2 執行記錄） */
   VICTORY_RELICS_REQUIRED: 3,
 
+  // ── 失敗條件（M31，docs/01 §2、docs/25）──
+  /** 破產寬限期（tick）：商會資金 <=0 且全部艦隊合計只剩最後一艘船，連續達到
+   * 這麼多 tick 才正式判定 DEFEAT——給玩家時間翻本，而不是一次判定就結束。 */
+  BANKRUPTCY_GRACE_TICKS: 30,
+
   // ── 存檔 ──
   MAX_ACTIVE_WORLDS_PER_USER: 5,
 

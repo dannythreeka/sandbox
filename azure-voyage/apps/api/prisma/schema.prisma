@@ -46,6 +46,10 @@ model GameWorld {
   // 等於陣列長度時代表全部完成。條件判定全走既有可查詢狀態，這裡只存進度指標。
   questChapter Int @default(0)
 
+  // 破產寬限期計數（M31）：商會資金 <=0 且全部艦隊只剩最後一艘船時逐 tick 累加，
+  // 未持續達標則歸零；達到 BALANCE.BANKRUPTCY_GRACE_TICKS 才正式判定 DEFEAT。
+  bankruptTicks Int @default(0)
+
   guilds       Guild[]
   fleets       Fleet[]
   officers     Officer[]

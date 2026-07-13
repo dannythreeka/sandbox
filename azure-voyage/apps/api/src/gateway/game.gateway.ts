@@ -180,6 +180,11 @@ export class GameGateway implements OnGatewayConnection {
     this.server.to(worldRoom(worldId)).emit(WS_EVENTS.SERVER_QUEST_CHAPTER, payload);
   }
 
+  @OnEvent("world.defeat")
+  onWorldDefeat({ worldId, payload }: { worldId: string; payload: unknown }): void {
+    this.server.to(worldRoom(worldId)).emit(WS_EVENTS.SERVER_DEFEAT, payload);
+  }
+
   private requireUser(socket: Socket): string {
     const userId = (socket.data as Partial<GameSocketData>).userId;
     if (!userId) {

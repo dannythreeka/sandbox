@@ -32,6 +32,7 @@ import {
   type ServerQuestChapterPayload,
   type ServerResyncPayload,
   type ServerTickPayload,
+  type ServerDefeatPayload,
   type ServerVictoryPayload,
   type WorldSnapshot,
 } from "@azure-voyage/shared";
@@ -107,6 +108,13 @@ const VICTORY_REASON_LABELS: Record<ServerVictoryPayload["reason"], string> = {
   ASSET_TARGET: "累積總資產",
   RELIC_COLLECTOR: "傳世遺物蒐集",
 };
+/** M31：破產結局的原創收尾敘事（唯一的失敗原因目前只有 BANKRUPTCY） */
+const DEFEAT_REASON_NARRATIVE: Record<ServerDefeatPayload["reason"], string> = {
+  BANKRUPTCY:
+    "帳房最後一次點清金庫，只剩下滿地的欠條。碼頭上，債主們的身影比海鷗還多。" +
+    "最後一艘船靜靜停在原本屬於你的泊位——蒼瀾海域不會等一個破產的商會東山再起，" +
+    "這段航路，到此為止。",
+};
 /** M14：天氣標籤與顏色 */
 const WEATHER_LABELS: Record<string, { text: string; cls: string }> = {
   CLEAR: { text: "晴朗", cls: "text-slate-300" },
@@ -138,6 +146,7 @@ export default function PlayPage() {
   const [battleState, setBattleState] = useState<BattleStateView | null>(null);
   const [battleLog, setBattleLog] = useState<string[]>([]);
   const [victory, setVictory] = useState<ServerVictoryPayload | null>(null);
+  const [defeat, setDefeat] = useState<ServerDefeatPayload | null>(null);
   const [cutscene, setCutscene] = useState<CutsceneState | null>(null);
   const [codexOpen, setCodexOpen] = useState(false);
   const [captainOpen, setCaptainOpen] = useState(false);
@@ -301,6 +310,9 @@ export default function PlayPage() {
     socket.on(WS_EVENTS.SERVER_VICTORY, (payload: ServerVictoryPayload) => {
       setVictory(payload);
     });
+    socket.on(WS_EVENTS.SERVER_DEFEAT, (payload: ServerDefeatPayload) => {
+      setDefeat(payload);
+    });
     socket.on(WS_EVENTS.SERVER_QUEST_CHAPTER, (payload: ServerQuestChapterPayload) => {
       setQuestCutscene(payload);
       api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
@@ -396,7 +408,9 @@ export default function PlayPage() {
     if (activity === "DOCKED") setPendingHeading(null);
   }, [activity]);
   // 重新整理頁面時若世界早已結束（例如先前已達成勝利），仍要顯示終局畫面
-  const gameEnded = victory !== null || (snapshot ? snapshot.world.status !== "ACTIVE" : false);
+  // M31：DEFEAT 是獨立於 VICTORY 的結局，不能沿用同一塊「商會稱霸四海」畫面
+  const isDefeat = defeat !== null || (snapshot ? snapshot.world.status === "DEFEAT" : false);
+  const gameEnded = victory !== null || isDefeat || (snapshot ? snapshot.world.status !== "ACTIVE" : false);
 
   // ── 節奏器：SAILING 時依速度檔每隔 N ms 送出 client:advance ──
   // M13：過場動畫期間暫停（與「暫停」檔語意一致，無資料面副作用）。
@@ -704,15 +718,34 @@ export default function PlayPage() {
       )}
 
       {gameEnded && (
-        <section className="panel border-2 border-gold bg-gold/10 text-center">
-          <h2 className="text-2xl font-bold text-gold">
-            商會稱霸四海！
-            {victory ? `第 ${victory.tick} 日達成勝利` : ""}
-          </h2>
-          {victory && (
-            <p className="mt-1 text-sm text-slate-300">
-              {VICTORY_REASON_LABELS[victory.reason]}達成勝利條件。
-            </p>
+        <section
+          className={
+            isDefeat
+              ? "panel border-2 border-red-500/70 bg-red-950/20 text-center"
+              : "panel border-2 border-gold bg-gold/10 text-center"
+          }
+        >
+          {isDefeat ? (
+            <>
+              <h2 className="text-2xl font-bold text-red-400">
+                商會傾覆……{defeat ? `第 ${defeat.tick} 日` : ""}
+              </h2>
+              <p className="mt-1 text-sm text-slate-300">
+                {DEFEAT_REASON_NARRATIVE[defeat?.reason ?? "BANKRUPTCY"]}
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl font-bold text-gold">
+                商會稱霸四海！
+                {victory ? `第 ${victory.tick} 日達成勝利` : ""}
+              </h2>
+              {victory && (
+                <p className="mt-1 text-sm text-slate-300">
+                  {VICTORY_REASON_LABELS[victory.reason]}達成勝利條件。
+                </p>
+              )}
+            </>
           )}
           <Link href="/worlds" className="btn mt-3 inline-block">
             回航海誌
@@ -800,6 +833,14 @@ export default function PlayPage() {
               )
             )}
           </section>
+
+          {snapshot.bankruptcyWarning && (
+            <section className="panel border border-red-500/60 bg-red-950/20 py-2 text-sm text-red-300">
+              瀕臨破產！資金見底、艦隊只剩最後一艘船——若持續{" "}
+              {snapshot.bankruptcyWarning.graceTicks - snapshot.bankruptcyWarning.ticksElapsed} 天沒有翻本，
+              商會將宣告破產。快去交易或探索找機會回本。
+            </section>
+          )}
 
           {codexOpen && <DiscoveryCodexPanel worldId={worldId} onClose={() => setCodexOpen(false)} />}
           {captainOpen && (
