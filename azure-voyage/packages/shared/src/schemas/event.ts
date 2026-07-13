@@ -42,8 +42,27 @@ export const DiscoveryRecordViewSchema = z.object({
   registered: z.boolean(),
   goldReward: z.number().int(),
   fameReward: z.number().int(),
+  /** AI 生成（或 fallback）的圖鑑敘事，找到時固化一次；尚未固化前為 undefined。 */
+  narrative: z.string().optional(),
 });
 export type DiscoveryRecordView = z.infer<typeof DiscoveryRecordViewSchema>;
+
+// ── 圖鑑（Codex，M22）：完整發現物清單，未找到的以剪影呈現 ──
+
+export const DiscoveryCodexEntrySchema = z.object({
+  discoveryId: z.string(),
+  category: z.string(),
+  rarity: z.string(),
+  found: z.boolean(),
+  registered: z.boolean(),
+  /** 未找到時為 undefined，前端顯示為剪影／「???」 */
+  name: z.string().optional(),
+  description: z.string().optional(),
+  narrative: z.string().optional(),
+  goldReward: z.number().int().optional(),
+  fameReward: z.number().int().optional(),
+});
+export type DiscoveryCodexEntry = z.infer<typeof DiscoveryCodexEntrySchema>;
 
 export const RegisterDiscoveryInputSchema = z.object({
   discoveryRecordId: z.string().min(1),

@@ -42,6 +42,7 @@ import { TavernShipyardPanel } from "@/game/TavernShipyardPanel";
 import { BattleScene } from "@/game/BattleScene";
 import { ExplorationPanel } from "@/game/ExplorationPanel";
 import { DiscoveryPanel } from "@/game/DiscoveryPanel";
+import { DiscoveryCodexPanel } from "@/game/DiscoveryCodexPanel";
 import { InfluencePanel } from "@/game/InfluencePanel";
 import { PortCutscene, type CutsceneState } from "@/game/PortCutscene";
 import { GameArt } from "@/game/GameArt";
@@ -82,6 +83,12 @@ const WIND_GAP_LABELS = [
   { text: "側風", cls: "text-slate-300" },
   { text: "逆風", cls: "text-red-400" },
 ] as const;
+/** 勝利條件文案（M22 新增 RELIC_COLLECTOR） */
+const VICTORY_REASON_LABELS: Record<ServerVictoryPayload["reason"], string> = {
+  REGION_DOMINANCE: "海域霸權",
+  ASSET_TARGET: "累積總資產",
+  RELIC_COLLECTOR: "傳世遺物蒐集",
+};
 /** M14：天氣標籤與顏色 */
 const WEATHER_LABELS: Record<string, { text: string; cls: string }> = {
   CLEAR: { text: "晴朗", cls: "text-slate-300" },
@@ -114,6 +121,7 @@ export default function PlayPage() {
   const [battleLog, setBattleLog] = useState<string[]>([]);
   const [victory, setVictory] = useState<ServerVictoryPayload | null>(null);
   const [cutscene, setCutscene] = useState<CutsceneState | null>(null);
+  const [codexOpen, setCodexOpen] = useState(false);
   // M14：每次遞增觸發一次海圖的全屏閃光＋震動（風暴事件實際觸發時）
   const [stormFlashTrigger, setStormFlashTrigger] = useState(0);
   const socketRef = useRef<Socket | null>(null);
@@ -589,7 +597,7 @@ export default function PlayPage() {
           </h2>
           {victory && (
             <p className="mt-1 text-sm text-slate-300">
-              {victory.reason === "REGION_DOMINANCE" ? "海域霸權" : "累積總資產"}達成勝利條件。
+              {VICTORY_REASON_LABELS[victory.reason]}達成勝利條件。
             </p>
           )}
           <Link href="/worlds" className="btn mt-3 inline-block">
@@ -643,8 +651,16 @@ export default function PlayPage() {
                 霸權海域 {snapshot.victoryProgress.regionsDominated}/{BALANCE.VICTORY_REGIONS_REQUIRED}
               </span>
               <span>總資產 {snapshot.victoryProgress.totalAssets.toLocaleString("zh-TW")}</span>
+              <span>
+                傳世遺物 {snapshot.victoryProgress.relicsFound}/{BALANCE.VICTORY_RELICS_REQUIRED}
+              </span>
+              <button className="btn-ghost" onClick={() => setCodexOpen(true)}>
+                圖鑑
+              </button>
             </div>
           </section>
+
+          {codexOpen && <DiscoveryCodexPanel worldId={worldId} onClose={() => setCodexOpen(false)} />}
 
           <SeaMap
             fleetPos={fleetOffsetPos}

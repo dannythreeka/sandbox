@@ -8,6 +8,7 @@ import {
   type CreateWorldInput,
   type DialogueRequest,
   type DialogueResponse,
+  type DiscoveryCodexEntry,
   type DiscoveryRecordView,
   type ErrorCode,
   type ExploreResult,
@@ -136,6 +137,8 @@ export const api = {
     request<ExploreResult>(`/worlds/${worldId}/fleets/${fleetId}/explore`, { method: "POST" }),
   listDiscoveries: (worldId: string) =>
     request<DiscoveryRecordView[]>(`/worlds/${worldId}/discoveries`),
+  discoveryCodex: (worldId: string) =>
+    request<DiscoveryCodexEntry[]>(`/worlds/${worldId}/discoveries/codex`),
   registerDiscovery: (worldId: string, portId: string, discoveryRecordId: string) =>
     request<RegisterDiscoveryResult>(
       `/worlds/${worldId}/ports/${portId}/guild-hall/register-discovery`,

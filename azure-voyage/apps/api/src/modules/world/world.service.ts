@@ -6,6 +6,7 @@ import {
   CONTENT_VERSION,
   PORTS,
   regionsDominatedBy,
+  RELIC_DISCOVERY_IDS,
   resolvePortId,
   shipClassById,
   WorldSnapshotSchema,
@@ -228,7 +229,9 @@ export class WorldService {
         where: { portState: { worldId } },
         include: { portState: true },
       }),
-      this.prisma.discoveryRecord.count({ where: { worldId, registered: true } }),
+      this.prisma.discoveryRecord.count({
+        where: { worldId, registered: true, discoveryId: { in: [...RELIC_DISCOVERY_IDS] } },
+      }),
     ]);
 
     // M21 縮編後既有存檔可能還有艦隊/待業航海士停在已刪除的港口 id；讀取時順便自我修復

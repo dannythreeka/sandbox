@@ -3,6 +3,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
   BALANCE,
   regionsDominatedBy,
+  RELIC_DISCOVERY_IDS,
   shipClassById,
   victoryAssetTarget,
   type Difficulty,
@@ -59,6 +60,14 @@ export class VictoryService {
       const totalAssets = Number(playerGuild.gold) + shipValue;
       if (totalAssets >= victoryAssetTarget(world.difficulty as Difficulty)) {
         reason = "ASSET_TARGET";
+      } else {
+        // 傳世遺物蒐集（M22，docs/01 §2）：登錄滿全部 S 級發現物即達成。
+        const relicsRegistered = await this.prisma.discoveryRecord.count({
+          where: { worldId, registered: true, discoveryId: { in: [...RELIC_DISCOVERY_IDS] } },
+        });
+        if (relicsRegistered >= BALANCE.VICTORY_RELICS_REQUIRED) {
+          reason = "RELIC_COLLECTOR";
+        }
       }
     }
     if (!reason) return;

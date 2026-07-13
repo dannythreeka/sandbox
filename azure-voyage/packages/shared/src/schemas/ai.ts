@@ -59,3 +59,11 @@ export const OfficerPersonaGenSchema = z.object({
   greeting: z.string().min(1).max(150),
 });
 export type OfficerPersonaGen = z.infer<typeof OfficerPersonaGenSchema>;
+
+// ── 發現物圖鑑敘事生成器（NARRATIVE_GEN，docs/01 §4.6）──
+
+/** 找到發現物時一次性生成的圖鑑敘事文本，成功後固化在 DiscoveryRecord.narrative，不再重生成。 */
+export const DiscoveryNarrativeGenSchema = z.object({
+  narrative: z.string().min(1).max(400),
+});
+export type DiscoveryNarrativeGen = z.infer<typeof DiscoveryNarrativeGenSchema>;
