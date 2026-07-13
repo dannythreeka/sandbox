@@ -68,18 +68,21 @@ export function TradePanel({ worldId, portId, fleetId, shipId, onTraded }: Trade
   if (!detail) return <p className="text-slate-400">載入市場中…</p>;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-foam">{detail.name} 市場</h3>
-        <span className="text-sm text-slate-400">
-          我方影響力 {detail.playerShare.toFixed(1)}%
+        <div>
+          <p className="section-kicker">Harbour Exchange</p>
+          <h3 className="text-lg font-semibold text-foam">{detail.name} 市場</h3>
+        </div>
+        <span className="rounded-full border border-gold/25 bg-gold/10 px-2.5 py-1 text-xs text-gold">
+          商會影響力 {detail.playerShare.toFixed(1)}%
         </span>
       </div>
       <p className="text-xs italic text-slate-500">{detail.description}</p>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="text-left text-slate-400">
+          <thead className="text-left text-xs uppercase tracking-wider text-foam/65">
             <tr>
               <th className="pb-2">商品</th>
               <th className="pb-2">庫存</th>
@@ -93,8 +96,8 @@ export function TradePanel({ worldId, portId, fleetId, shipId, onTraded }: Trade
             {detail.market.map((m) => {
               const commodity = commodityById(m.commodityId);
               return (
-              <tr key={m.commodityId} className="border-t border-foam/10">
-                <td className="py-2">
+              <tr key={m.commodityId} className="data-row border-y-4 border-transparent">
+                <td className="rounded-l-lg py-2 pl-3">
                   <span className="flex items-center gap-2">
                     <GameArt
                       category="goods"
@@ -106,7 +109,7 @@ export function TradePanel({ worldId, portId, fleetId, shipId, onTraded }: Trade
                     {commodity.name}
                   </span>
                 </td>
-                <td className="py-2 font-mono">{m.stock}</td>
+                <td className="py-2 font-mono text-slate-300">{m.stock}</td>
                 <td className="py-2 font-mono text-emerald-300">{m.buyPrice}</td>
                 <td className="py-2 font-mono text-amber-300">{m.sellPrice}</td>
                 <td className="py-2">
@@ -120,7 +123,7 @@ export function TradePanel({ worldId, portId, fleetId, shipId, onTraded }: Trade
                     }
                   />
                 </td>
-                <td className="flex gap-2 py-2">
+                <td className="flex gap-2 rounded-r-lg py-2 pr-3">
                   <button className="btn-ghost" disabled={busy} onClick={() => submit(m.commodityId, "BUY")}>
                     買入
                   </button>

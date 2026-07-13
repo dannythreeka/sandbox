@@ -626,8 +626,8 @@ export default function PlayPage() {
     : null;
 
   return (
-    <main className="space-y-4">
-      <header className="flex items-center justify-between">
+    <main className="game-shell">
+      <header className="game-topbar flex items-center justify-between gap-3">
         <Link href="/worlds" className="btn-ghost">
           ← 回航海誌
         </Link>
@@ -692,10 +692,11 @@ export default function PlayPage() {
 
       {snapshot && fleet && fleetOffsetPos ? (
         <>
-          <section className="panel flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h1 className="text-xl font-bold text-foam">{snapshot.world.name}</h1>
-              <p className="text-sm text-slate-400">
+          <section className="captain-hud flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative z-10">
+              <p className="section-kicker">Captain's Log</p>
+              <h1 className="text-2xl font-bold text-foam">{snapshot.world.name}</h1>
+              <p className="mt-1 text-sm text-slate-400">
                 第 <span className="font-mono text-gold">{tick ?? snapshot.world.currentTick}</span>{" "}
                 日 ·{" "}
                 <button
@@ -711,9 +712,9 @@ export default function PlayPage() {
                 </span>
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-300">
+            <div className="relative z-10 flex flex-wrap items-center gap-2 text-sm text-slate-300">
               {region && windDir !== null && (
-                <span className="flex items-center gap-1.5">
+                <span className="stat-chip flex items-center gap-1.5">
                   <span className="text-foam" title={region.description}>{region.name}</span>
                   <span>{SEASON_LABELS[seasonAtTick(currentTick)]}季</span>
                   <span
@@ -736,15 +737,15 @@ export default function PlayPage() {
                   )}
                 </span>
               )}
-              <span>糧 {food}</span>
-              <span>水 {water}</span>
-              <span>士氣 {morale}</span>
-              <span>
-                霸權海域 {snapshot.victoryProgress.regionsDominated}/{BALANCE.VICTORY_REGIONS_REQUIRED}
+              <span className="stat-chip">糧<strong>{food}</strong></span>
+              <span className="stat-chip">水<strong>{water}</strong></span>
+              <span className="stat-chip">士氣<strong>{morale}</strong></span>
+              <span className="stat-chip">
+                霸權<strong>{snapshot.victoryProgress.regionsDominated}/{BALANCE.VICTORY_REGIONS_REQUIRED}</strong>
               </span>
-              <span>總資產 {snapshot.victoryProgress.totalAssets.toLocaleString("zh-TW")}</span>
-              <span>
-                傳世遺物 {snapshot.victoryProgress.relicsFound}/{BALANCE.VICTORY_RELICS_REQUIRED}
+              <span className="stat-chip">資產<strong>{snapshot.victoryProgress.totalAssets.toLocaleString("zh-TW")}</strong></span>
+              <span className="stat-chip">
+                遺物<strong>{snapshot.victoryProgress.relicsFound}/{BALANCE.VICTORY_RELICS_REQUIRED}</strong>
               </span>
               <button className="btn-ghost" onClick={() => setCodexOpen(true)}>
                 圖鑑
@@ -802,7 +803,7 @@ export default function PlayPage() {
 
           {activity === "DOCKED" && currentPort && <PortBanner portId={currentPort.portId} />}
 
-          <section className="panel flex flex-wrap items-center gap-4">
+          <section className="panel command-deck flex flex-wrap items-center gap-4">
             {activity === "DOCKED" && currentPort && (
               <>
                 <p className="text-slate-200">
@@ -867,78 +868,66 @@ export default function PlayPage() {
           </section>
 
           {activity === "DOCKED" && currentPort && (
-            <section className="panel">
-              <PortNotablePanel worldId={worldId} portId={currentPort.portId} />
-            </section>
-          )}
-
-          {activity === "DOCKED" && currentPort && fleet.ships[0] && (
-            <section className="panel">
-              <FleetOverviewPanel fleet={fleet} />
-            </section>
-          )}
-
-          {activity === "DOCKED" && currentPort && fleet.ships[0] && (
-            <section className="panel">
-              <TradePanel
-                worldId={worldId}
-                portId={currentPort.portId}
-                fleetId={fleet.id}
-                shipId={fleet.ships[0].id}
-                onTraded={() => {
-                  api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
-                }}
-              />
-            </section>
-          )}
-
-          {activity === "DOCKED" && currentPort && (
-            <section className="panel">
-              <TradeRoutePanel
-                worldId={worldId}
-                portId={currentPort.portId}
-                onSetRoute={(targetPortId) => handleMapTarget({ targetPortId })}
-              />
-            </section>
-          )}
-
-          {activity === "DOCKED" && currentPort && (
-            <section className="panel">
-              <TavernShipyardPanel
-                worldId={worldId}
-                portId={currentPort.portId}
-                fleet={fleet}
-                onChanged={() => {
-                  api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
-                }}
-              />
-            </section>
-          )}
-
-          {activity === "DOCKED" && currentPort && (
-            <section className="panel">
-              <DiscoveryPanel
-                worldId={worldId}
-                portId={currentPort.portId}
-                onChanged={() => {
-                  api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
-                }}
-              />
-            </section>
-          )}
-
-          {activity === "DOCKED" && currentPort && (
-            <section className="panel">
-              <InfluencePanel
-                worldId={worldId}
-                portId={currentPort.portId}
-                gold={snapshot.playerGuild.gold}
-                npcGuilds={snapshot.npcGuilds}
-                onInvested={() => {
-                  api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
-                }}
-              />
-            </section>
+            <div className="port-grid">
+              <section className="panel xl:col-span-2">
+                <PortNotablePanel worldId={worldId} portId={currentPort.portId} />
+              </section>
+              {fleet.ships[0] && (
+                <section className="panel">
+                  <FleetOverviewPanel fleet={fleet} />
+                </section>
+              )}
+              <section className="panel">
+                <TradeRoutePanel
+                  worldId={worldId}
+                  portId={currentPort.portId}
+                  onSetRoute={(targetPortId) => handleMapTarget({ targetPortId })}
+                />
+              </section>
+              {fleet.ships[0] && (
+                <section className="panel xl:col-span-2">
+                  <TradePanel
+                    worldId={worldId}
+                    portId={currentPort.portId}
+                    fleetId={fleet.id}
+                    shipId={fleet.ships[0].id}
+                    onTraded={() => {
+                      api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
+                    }}
+                  />
+                </section>
+              )}
+              <section className="panel xl:col-span-2">
+                <TavernShipyardPanel
+                  worldId={worldId}
+                  portId={currentPort.portId}
+                  fleet={fleet}
+                  onChanged={() => {
+                    api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
+                  }}
+                />
+              </section>
+              <section className="panel">
+                <DiscoveryPanel
+                  worldId={worldId}
+                  portId={currentPort.portId}
+                  onChanged={() => {
+                    api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
+                  }}
+                />
+              </section>
+              <section className="panel">
+                <InfluencePanel
+                  worldId={worldId}
+                  portId={currentPort.portId}
+                  gold={snapshot.playerGuild.gold}
+                  npcGuilds={snapshot.npcGuilds}
+                  onInvested={() => {
+                    api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
+                  }}
+                />
+              </section>
+            </div>
           )}
         </>
       ) : (
