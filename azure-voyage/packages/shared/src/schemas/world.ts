@@ -140,6 +140,16 @@ export const QuestProgressViewSchema = z.object({
 });
 export type QuestProgressView = z.infer<typeof QuestProgressViewSchema>;
 
+/**
+ * 破產倒數警示（M31）：商會目前處於「資金 <=0 且全部艦隊只剩最後一艘船」的
+ * 絕境時才非 null——讓玩家看得到寬限期倒數，有機會翻本，而不是無預警 DEFEAT。
+ */
+export const BankruptcyWarningViewSchema = z.object({
+  ticksElapsed: z.number().int(),
+  graceTicks: z.number().int(),
+});
+export type BankruptcyWarningView = z.infer<typeof BankruptcyWarningViewSchema>;
+
 export const WorldSnapshotSchema = z.object({
   world: WorldSummarySchema.extend({ seed: z.number().int() }),
   playerGuild: z.object({
@@ -158,5 +168,6 @@ export const WorldSnapshotSchema = z.object({
     relicsFound: z.number().int(),
     totalAssets: z.number().int(),
   }),
+  bankruptcyWarning: BankruptcyWarningViewSchema.nullable(),
 });
 export type WorldSnapshot = z.infer<typeof WorldSnapshotSchema>;

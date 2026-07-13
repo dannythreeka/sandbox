@@ -21,6 +21,7 @@ export const WS_EVENTS = {
   BATTLE_END: "battle:end",
   SERVER_VICTORY: "server:victory",
   SERVER_QUEST_CHAPTER: "server:quest-chapter",
+  SERVER_DEFEAT: "server:defeat",
 } as const;
 
 export const ClientJoinSchema = z.object({
@@ -69,3 +70,11 @@ export const ServerQuestChapterSchema = z.object({
   fameReward: z.number().int(),
 });
 export type ServerQuestChapterPayload = z.infer<typeof ServerQuestChapterSchema>;
+
+/** 破產判定推播（M31）：目前唯一的失敗原因是破產，先留 enum 方便日後擴充。 */
+export const ServerDefeatSchema = z.object({
+  status: WorldStatusSchema,
+  tick: z.number().int().nonnegative(),
+  reason: z.enum(["BANKRUPTCY"]),
+});
+export type ServerDefeatPayload = z.infer<typeof ServerDefeatSchema>;

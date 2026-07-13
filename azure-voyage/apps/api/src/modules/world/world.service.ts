@@ -296,9 +296,14 @@ export class WorldService {
     const dockedPortIds = new Set(
       fleets.map((f) => f.dockedPortId).filter((p): p is string => p !== null),
     );
-    const shipValue = fleets
-      .flatMap((f) => f.ships)
-      .reduce((acc, s) => acc + shipClassById(s.shipClassId).price, 0);
+    const allShips = fleets.flatMap((f) => f.ships);
+    const shipValue = allShips.reduce((acc, s) => acc + shipClassById(s.shipClassId).price, 0);
+    // M31：破產倒數警示——資金 <=0 且全部艦隊只剩最後一艘船時才顯示，讓玩家
+    // 看得到寬限期倒數（見 DefeatService 的判定邏輯，這裡只是唯讀呈現）。
+    const bankruptcyWarning =
+      Number(playerGuild.gold) <= 0 && allShips.length <= 1
+        ? { ticksElapsed: world.bankruptTicks, graceTicks: BALANCE.BANKRUPTCY_GRACE_TICKS }
+        : null;
     const regionsDominated = regionsDominatedBy(
       playerGuild.id,
       influenceRows.map((r) => ({ portId: r.portState.portId, guildId: r.guildId, share: Number(r.share) })),
@@ -391,6 +396,7 @@ export class WorldService {
         totalAssets: Number(playerGuild.gold) + shipValue,
       },
       quest: buildQuestProgressView(world.questChapter),
+      bankruptcyWarning,
     };
     // 驗收要求：快照必須通過 shared zod schema（docs/09 M1）
     return WorldSnapshotSchema.parse(snapshot);

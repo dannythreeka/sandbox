@@ -5,6 +5,7 @@ import { EventGenService } from "../ai/event-gen.service";
 import { NpcStrategyService } from "../ai/npc-strategy.service";
 import { PersonaService } from "../ai/persona.service";
 import { EncounterService } from "../battle/encounter.service";
+import { DefeatService } from "../defeat/defeat.service";
 import { EventService } from "../event/event.service";
 import { InfluenceService } from "../influence/influence.service";
 import { EconomyService } from "../market/economy.service";
@@ -38,6 +39,7 @@ export class WorldTickProcessor extends WorkerHost {
     private readonly influenceService: InfluenceService,
     private readonly victoryService: VictoryService,
     private readonly questService: QuestService,
+    private readonly defeatService: DefeatService,
     private readonly npcStrategyService: NpcStrategyService,
     private readonly eventGenService: EventGenService,
     private readonly personaService: PersonaService,
@@ -63,6 +65,7 @@ export class WorldTickProcessor extends WorkerHost {
       await this.influenceService.settleAllPorts(worldId);
       await this.victoryService.checkVictory(worldId, last.tick);
       await this.questService.checkProgress(worldId, last.tick);
+      await this.defeatService.checkDefeat(worldId, last.tick);
     }
     return last!;
   }
