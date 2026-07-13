@@ -26,6 +26,8 @@ export interface BattleUnit {
   speed: number;
   fled: boolean;
   destroyed: boolean;
+  /** 炮術長（GUNNER）職位加成比例（0–GUNNER_DAMAGE_BONUS_MAX，M23），預設 0 */
+  damageBonusPct: number;
 }
 
 export interface BattleState {
@@ -60,6 +62,7 @@ export function unitFromShip(
   pos: AxialCoord,
   hull: number,
   crew: number,
+  damageBonusPct = 0,
 ): BattleUnit {
   return {
     id,
@@ -75,6 +78,7 @@ export function unitFromShip(
     speed: shipClass.speed,
     fled: false,
     destroyed: false,
+    damageBonusPct,
   };
 }
 
@@ -126,7 +130,7 @@ export function applyBattleAction(state: BattleState, action: BattleAction, rng:
       const dist = hexDistance(actor.pos, target.pos);
       if (dist > FIRE_RANGE) throw new Error("target out of range");
       const rangeFalloff = Math.max(0.5, 1 - dist / (FIRE_RANGE + 1));
-      const rawDamage = actor.cannons * (6 + rng.int(0, 6)) * rangeFalloff;
+      const rawDamage = actor.cannons * (6 + rng.int(0, 6)) * rangeFalloff * (1 + actor.damageBonusPct);
       const damage = Math.max(1, Math.round(rawDamage));
       target.hull = Math.max(0, target.hull - damage);
       log = `${actor.name} 砲擊 ${target.name}，造成 ${damage} 點傷害`;

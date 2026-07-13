@@ -68,6 +68,10 @@ function makePrisma(state: BattleState, opts: { gold?: number; status?: string }
         guild.gold = data.gold;
       }),
     },
+    officer: {
+      findMany: jest.fn(async () => [] as { id: string; role: string | null; stats: unknown; exp: number }[]),
+      update: jest.fn(),
+    },
     $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)),
   } as unknown as PrismaService;
 
@@ -123,5 +127,20 @@ describe("BattleService.applyAction", () => {
     expect(Number(guild.gold)).toBeGreaterThan(1000);
     expect(fleet).toMatchObject({ activity: "SAILING" });
     expect(ships.find((s) => s.id === "s1")).toBeDefined(); // 玩家船隻保留
+  });
+
+  it("awards exp to the fleet's officers on PLAYER_WIN (M23)", async () => {
+    const state = initBattleState(makeOneShotUnits());
+    const { prisma } = makePrisma(state, { gold: 1000 });
+    (prisma.officer.findMany as jest.Mock).mockResolvedValueOnce([
+      { id: "o1", exp: 0, stats: { lead: 10, nav: 10, combat: 10, trade: 10, lore: 10 } },
+    ]);
+    const service = new BattleService(prisma, { emit: jest.fn() } as never);
+
+    await service.applyAction("u1", "w1", "b1", { type: "FIRE", unitId: "s1", targetId: "enemy-0" });
+
+    expect(prisma.officer.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "o1" } }),
+    );
   });
 });

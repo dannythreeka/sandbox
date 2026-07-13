@@ -1,5 +1,11 @@
 import { Injectable } from "@nestjs/common";
-import { BALANCE, type AssignRoleInput, type TavernOfficerView } from "@azure-voyage/shared";
+import {
+  BALANCE,
+  firstMateLoyaltyMitigation,
+  type AssignRoleInput,
+  type OfficerStats,
+  type TavernOfficerView,
+} from "@azure-voyage/shared";
 import { GameError } from "../../common/errors/game-error";
 import { PrismaService } from "../../prisma/prisma.service";
 
@@ -90,11 +96,17 @@ export class OfficerService {
           data: { gold: BigInt(gold - totalSalary) },
         });
       } else {
+        // 副官（FIRST_MATE）：坐鎮時減緩欠薪對忠誠度的衝擊（M23）
+        const firstMate = fleet.officers.find((o) => o.role === "FIRST_MATE");
+        const mitigation = firstMateLoyaltyMitigation(
+          (firstMate?.stats as unknown as OfficerStats | undefined)?.lead,
+        );
+        const penalty = Math.round(BALANCE.LOYALTY_PENALTY_UNPAID * (1 - mitigation));
         await this.prisma.$transaction(
           fleet.officers.map((o) =>
             this.prisma.officer.update({
               where: { id: o.id },
-              data: { loyalty: Math.max(0, o.loyalty - BALANCE.LOYALTY_PENALTY_UNPAID) },
+              data: { loyalty: Math.max(0, o.loyalty - penalty) },
             }),
           ),
         );

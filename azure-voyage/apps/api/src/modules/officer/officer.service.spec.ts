@@ -187,4 +187,27 @@ describe("OfficerService.paySalariesIfDue", () => {
     expect(Number(guilds.g1.gold)).toBe(50); // 沒扣款
     expect(officers[0].loyalty).toBe(15 - BALANCE.LOYALTY_PENALTY_UNPAID);
   });
+
+  it("a first mate softens the unpaid loyalty penalty for the whole fleet (M23)", async () => {
+    const officers = [
+      officer({
+        id: "fm",
+        fleetId: "f1",
+        locationPortId: null,
+        role: "FIRST_MATE",
+        salary: 0,
+        loyalty: 60,
+        stats: { lead: 100, nav: 0, combat: 0, trade: 0, lore: 0 },
+      }),
+      officer({ id: "o2", fleetId: "f1", locationPortId: null, salary: 200, loyalty: 60 }),
+    ];
+    const { prisma, guilds } = makePrisma(officers, 0);
+    const service = new OfficerService(prisma);
+
+    await service.paySalariesIfDue("w1", BALANCE.SALARY_INTERVAL_TICKS);
+    expect(Number(guilds.g1.gold)).toBe(0); // 沒扣款
+    const penalty = 60 - officers[1].loyalty;
+    expect(penalty).toBeLessThan(BALANCE.LOYALTY_PENALTY_UNPAID);
+    expect(penalty).toBeGreaterThan(0);
+  });
 });

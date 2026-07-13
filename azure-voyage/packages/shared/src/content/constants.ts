@@ -81,6 +81,28 @@ export const BALANCE = {
   /** 欠薪時忠誠度扣減 */
   LOYALTY_PENALTY_UNPAID: 10,
 
+  // ── 航海士養成與職位效果（M23，docs/01 §4.5）──
+  /** 每滿此經驗值升一級；升級時全體屬性 +1（上限 100） */
+  OFFICER_EXP_PER_LEVEL: 150,
+  /** 完成一筆交易，艦隊全體航海士獲得的經驗值 */
+  OFFICER_EXP_PER_TRADE: 8,
+  /** 航行抵達港口，艦隊全體航海士獲得的經驗值 */
+  OFFICER_EXP_PER_ARRIVAL: 5,
+  /** 海戰獲勝，艦隊全體航海士獲得的經驗值 */
+  OFFICER_EXP_PER_BATTLE_WIN: 25,
+  /** 副官（FIRST_MATE）：欠薪忠誠度懲罰的減免比例 = lead × 此係數（上限見下） */
+  FIRST_MATE_LOYALTY_MITIGATION_PER_LEAD: 0.006,
+  FIRST_MATE_LOYALTY_MITIGATION_MAX: 0.6,
+  /** 炮術長（GUNNER）：砲擊傷害加成比例 = combat × 此係數（上限見下） */
+  GUNNER_DAMAGE_BONUS_PER_COMBAT: 0.003,
+  GUNNER_DAMAGE_BONUS_MAX: 0.3,
+  /** 會計長（PURSER）：買賣折扣加成 = trade × 此係數（上限見下，與影響力折扣疊加） */
+  PURSER_TRADE_BONUS_PER_TRADE_STAT: 0.0006,
+  PURSER_TRADE_BONUS_MAX: 0.06,
+  /** 瞭望員（LOOKOUT）：風暴／海賊遭遇機率降低比例 = lore × 此係數（上限見下） */
+  LOOKOUT_DANGER_REDUCTION_PER_LORE: 0.004,
+  LOOKOUT_DANGER_REDUCTION_MAX: 0.4,
+
   // ── 造船廠（M4 起使用）──
   /** 修理費：每點缺損耐久的金額 */
   REPAIR_COST_PER_HULL: 15,

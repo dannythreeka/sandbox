@@ -44,13 +44,17 @@ export function influenceDiscount(sharePercent: number): number {
   return Math.min(BALANCE.MAX_INFLUENCE_DISCOUNT, Math.floor(sharePercent / 10) * 0.01);
 }
 
-export function effectiveBuyPrice(marketPrice: number, sharePercent: number): number {
-  return Math.max(1, Math.round(marketPrice * (1 - influenceDiscount(sharePercent))));
+/**
+ * purserBonus：會計長（PURSER）職位加成（docs/01 §4.5，M23），與影響力折扣疊加，
+ * 預設 0（無會計長時不受影響）。
+ */
+export function effectiveBuyPrice(marketPrice: number, sharePercent: number, purserBonus = 0): number {
+  return Math.max(1, Math.round(marketPrice * (1 - influenceDiscount(sharePercent) - purserBonus)));
 }
 
-export function effectiveSellPrice(marketPrice: number, sharePercent: number): number {
+export function effectiveSellPrice(marketPrice: number, sharePercent: number, purserBonus = 0): number {
   const base = marketPrice * BALANCE.SELL_RATIO;
-  return Math.max(1, Math.round(base * (1 + influenceDiscount(sharePercent))));
+  return Math.max(1, Math.round(base * (1 + influenceDiscount(sharePercent) + purserBonus)));
 }
 
 /** 庫存回歸基準值（docs/05 §2）：每 tick 補回缺口的固定比例。 */

@@ -18,6 +18,7 @@ function makePrisma(overrides: { seed?: number } = {}) {
     posR: DANGEROUS_AXIAL.r,
     food: 30,
     water: 30,
+    officers: [] as { id: string; role: string | null; stats: unknown }[],
   };
   const worldEvents: { type: string; status: string; payload: unknown; expireTick?: number }[] = [];
   const portStates: Record<string, { id: string; prosperity: number }> = {
@@ -92,6 +93,23 @@ describe("EventService.rollStorms", () => {
       await service.rollStorms("w1", seed);
       expect(ships[0].hull).toBeGreaterThanOrEqual(1);
     }
+  });
+
+  it("reduces the storm trigger rate when the fleet has a lookout (M23)", async () => {
+    let withoutLookout = 0;
+    let withLookout = 0;
+    const trials = 300;
+    for (let seed = 0; seed < trials; seed++) {
+      const { prisma: p1, worldEvents: w1 } = makePrisma({ seed });
+      await new EventService(p1, { emit: jest.fn() } as never).rollStorms("w1", seed);
+      if (w1.length > 0) withoutLookout++;
+
+      const { prisma: p2, worldEvents: w2, fleet } = makePrisma({ seed });
+      fleet.officers = [{ id: "o1", role: "LOOKOUT", stats: { lore: 100 } }];
+      await new EventService(p2, { emit: jest.fn() } as never).rollStorms("w1", seed);
+      if (w2.length > 0) withLookout++;
+    }
+    expect(withLookout).toBeLessThan(withoutLookout);
   });
 });
 

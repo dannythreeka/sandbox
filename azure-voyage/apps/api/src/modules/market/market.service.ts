@@ -1,18 +1,22 @@
 import { Injectable } from "@nestjs/common";
 import {
+  BALANCE,
   commodityById,
   computeMarketPrice,
   effectiveBuyPrice,
   effectiveSellPrice,
   goodwillFromTrade,
   portByIdOrFallback,
+  purserTradeBonus,
   shipClassById,
+  type OfficerStats,
   type PortDetail,
   type TradeFill,
   type TradeInput,
   type TradeResult,
 } from "@azure-voyage/shared";
 import { GameError } from "../../common/errors/game-error";
+import { awardExpToFleetOfficers } from "../officer/officer-growth.util";
 import { PrismaService } from "../../prisma/prisma.service";
 
 interface CargoLine {
@@ -73,7 +77,10 @@ export class MarketService {
     if (!world || world.userId !== userId) throw new GameError("NOT_FOUND");
 
     return this.prisma.$transaction(async (tx) => {
-      const fleet = await tx.fleet.findUnique({ where: { id: input.fleetId } });
+      const fleet = await tx.fleet.findUnique({
+        where: { id: input.fleetId },
+        include: { officers: true },
+      });
       if (!fleet || fleet.worldId !== worldId) throw new GameError("NOT_FOUND");
       if (fleet.activity !== "DOCKED" || fleet.dockedPortId !== portId) {
         throw new GameError("PORT_NOT_DOCKED");
@@ -91,6 +98,9 @@ export class MarketService {
         where: { portStateId_guildId: { portStateId: portState.id, guildId: guild.id } },
       });
       const share = playerInfluence ? Number(playerInfluence.share) : 0;
+      // 會計長（PURSER）：買賣折扣加成，與影響力折扣疊加（M23）
+      const purser = fleet.officers.find((o) => o.role === "PURSER");
+      const purserBonus = purserTradeBonus((purser?.stats as unknown as OfficerStats | undefined)?.trade);
 
       const shipClass = shipClassById(ship.shipClassId);
       const cargoMap = new Map<string, CargoLine>(
@@ -114,7 +124,7 @@ export class MarketService {
 
         if (order.side === "BUY") {
           if (market.stock < order.quantity) throw new GameError("STOCK_INSUFFICIENT");
-          const unitPrice = effectiveBuyPrice(market.price, share);
+          const unitPrice = effectiveBuyPrice(market.price, share, purserBonus);
           const total = unitPrice * order.quantity;
           if (gold < total) throw new GameError("INSUFFICIENT_GOLD");
           const addedVolume = order.quantity * commodity.volume;
@@ -139,7 +149,7 @@ export class MarketService {
         } else {
           const existing = cargoMap.get(order.commodityId);
           if (!existing || existing.quantity < order.quantity) throw new GameError("STOCK_INSUFFICIENT");
-          const unitPrice = effectiveSellPrice(market.price, share);
+          const unitPrice = effectiveSellPrice(market.price, share, purserBonus);
           const total = unitPrice * order.quantity;
 
           gold += total;
@@ -190,6 +200,7 @@ export class MarketService {
           create: { portStateId: portState.id, guildId: guild.id, share: 0, goodwill: goodwillDelta },
           update: { goodwill: { increment: goodwillDelta } },
         });
+        await awardExpToFleetOfficers(tx, fleet.id, BALANCE.OFFICER_EXP_PER_TRADE);
       }
 
       return { fills, goldRemaining: gold };

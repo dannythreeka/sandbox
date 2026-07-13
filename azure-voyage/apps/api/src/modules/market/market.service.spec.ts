@@ -20,6 +20,7 @@ function makePrisma(state: FakeState) {
     guildId: "g1",
     activity: "DOCKED",
     dockedPortId: PORT_ID as string | null,
+    officers: [] as { id: string; role: string | null; stats: unknown; exp: number }[],
   };
   const ship = { id: "s1", fleetId: "f1", shipClassId: "ship.lugger" };
   const portState = { id: "ps1" };
@@ -70,9 +71,13 @@ function makePrisma(state: FakeState) {
         state.cargo = state.cargo.filter((c) => c.commodityId !== where.commodityId);
       }),
     },
+    officer: {
+      findMany: jest.fn(async () => fleet.officers),
+      update: jest.fn(),
+    },
   };
 
-  return { prisma, tx };
+  return { prisma, tx, fleet };
 }
 
 describe("MarketService.trade", () => {
@@ -102,6 +107,30 @@ describe("MarketService.trade", () => {
     expect(result.goldRemaining).toBe(10000 - expectedUnit * 10);
     expect(state.marketStock.stock).toBe(290);
     expect(state.cargo[0]).toMatchObject({ commodityId: COMMODITY_ID, quantity: 10 });
+  });
+
+  it("a purser gives a better unit price and the fleet's officers gain exp (M23)", async () => {
+    const state = baseState();
+    const { prisma, tx, fleet } = makePrisma(state);
+    fleet.officers.push({
+      id: "purser1",
+      role: "PURSER",
+      stats: { lead: 0, nav: 0, combat: 0, trade: 100, lore: 0 },
+      exp: 0,
+    });
+    const service = new MarketService(prisma);
+
+    const result = await service.trade("u1", "w1", PORT_ID, {
+      fleetId: "f1",
+      shipId: "s1",
+      orders: [{ commodityId: COMMODITY_ID, side: "BUY", quantity: 10 }],
+    });
+
+    const withoutPurser = effectiveBuyPrice(85, 0);
+    expect(result.fills[0].unitPrice).toBeLessThan(withoutPurser);
+    expect(tx.officer.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "purser1" } }),
+    );
   });
 
   it("rejects a BUY beyond available stock", async () => {
@@ -179,6 +208,7 @@ describe("MarketService.trade", () => {
       guildId: "g1",
       activity: "SAILING",
       dockedPortId: null as string | null,
+      officers: [] as { id: string; role: string | null; stats: unknown; exp: number }[],
     }));
     const service = new MarketService(prisma);
 

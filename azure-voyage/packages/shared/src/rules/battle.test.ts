@@ -61,6 +61,23 @@ describe("applyBattleAction", () => {
     expect(s.units.find((u) => u.id === "e1")!.hull).toBeLessThanOrEqual(enemy.hull);
   });
 
+  it("FIRE applies the gunner damage bonus (M23) on top of the base roll", () => {
+    const lugger = shipClassById("ship.lugger");
+    const base = unitFromShip("p1", "PLAYER", "P", lugger, { q: 0, r: 0 }, lugger.maxHull, 8);
+    const boosted = unitFromShip("p1", "PLAYER", "P", lugger, { q: 0, r: 0 }, lugger.maxHull, 8, 0.3);
+    const enemy = unitFromShip("e1", "ENEMY", "E", lugger, { q: 2, r: 0 }, lugger.maxHull, 8);
+
+    const baseState = initBattleState([base, enemy]);
+    const boostedState = initBattleState([boosted, { ...enemy }]);
+
+    const baseResult = applyBattleAction(baseState, { type: "FIRE", unitId: "p1", targetId: "e1" }, new Rng(7));
+    const boostedResult = applyBattleAction(boostedState, { type: "FIRE", unitId: "p1", targetId: "e1" }, new Rng(7));
+
+    const baseDamage = lugger.maxHull - baseResult.state.units.find((u) => u.id === "e1")!.hull;
+    const boostedDamage = lugger.maxHull - boostedResult.state.units.find((u) => u.id === "e1")!.hull;
+    expect(boostedDamage).toBeGreaterThan(baseDamage);
+  });
+
   it("FIRE rejects out-of-range targets", () => {
     const lugger = shipClassById("ship.lugger");
     const player = unitFromShip("p1", "PLAYER", "P", lugger, { q: 0, r: 0 }, lugger.maxHull, 8);
