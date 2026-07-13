@@ -70,5 +70,7 @@ export type ServerBattleUpdatePayload = z.infer<typeof ServerBattleUpdateSchema>
 export const ServerBattleEndSchema = z.object({
   battleId: z.string(),
   status: BattleStatusSchema,
+  /** 僅 PLAYER_LOSE 會帶：艦隊被拖回母港時扣的贖金，供前端過場畫面顯示 */
+  ransom: z.number().int().optional(),
 });
 export type ServerBattleEndPayload = z.infer<typeof ServerBattleEndSchema>;
