@@ -1,6 +1,6 @@
-import { initBattleState, shipClassById, unitFromShip, type BattleState } from "@azure-voyage/shared";
+import { HOME_PORT_ID, initBattleState, shipClassById, unitFromShip, type BattleState } from "@azure-voyage/shared";
 import type { PrismaService } from "../../prisma/prisma.service";
-import { BattleService } from "./battle.service";
+import { BATTLE_END_EVENT, BattleService } from "./battle.service";
 
 const SEED = 12345;
 
@@ -17,6 +17,18 @@ function makeOneShotUnits() {
   const lugger = shipClassById("ship.lugger");
   const player = unitFromShip("s1", "PLAYER", "旗艦", lugger, { q: -2, r: 0 }, lugger.maxHull, 8);
   const enemy = unitFromShip("enemy-0", "ENEMY", "海賊船", lugger, { q: 2, r: 0 }, 1, 4);
+  return [player, enemy];
+}
+
+/**
+ * 玩家血量僅剩 1、敵方血量健康：玩家 REPAIR（不攻擊）後，敵方 AI 必定選擇 FIRE
+ * （血量健康不會觸發逃跑判定），FIRE 傷害保底至少 1 點，保證一擊擊沉玩家——
+ * 不必掃描 seed 就能穩定重現 PLAYER_LOSE，用來驗證戰敗贖金與拖回母港的結算。
+ */
+function makePlayerAboutToLoseUnits() {
+  const lugger = shipClassById("ship.lugger");
+  const player = unitFromShip("s1", "PLAYER", "旗艦", lugger, { q: -2, r: 0 }, 1, 8);
+  const enemy = unitFromShip("enemy-0", "ENEMY", "海賊船", lugger, { q: 2, r: 0 }, 50, 4);
   return [player, enemy];
 }
 
@@ -127,6 +139,32 @@ describe("BattleService.applyAction", () => {
     expect(Number(guild.gold)).toBeGreaterThan(1000);
     expect(fleet).toMatchObject({ activity: "SAILING" });
     expect(ships.find((s) => s.id === "s1")).toBeDefined(); // 玩家船隻保留
+  });
+
+  // bug 修復：戰敗被拖回母港＋扣贖金，前端要靠 ransom 顯示明確的過場畫面
+  it("charges ransom and drags the fleet home on PLAYER_LOSE", async () => {
+    const state = initBattleState(makePlayerAboutToLoseUnits());
+    const { prisma, guild, fleet } = makePrisma(state, { gold: 1000 });
+    const emit = jest.fn();
+    const service = new BattleService(prisma, { emit } as never);
+
+    // 玩家 MOVE（不回血、不攻擊敵方），讓敵方接著 FIRE 一擊擊沉血量僅剩 1 的玩家船
+    const result = await service.applyAction("u1", "w1", "b1", {
+      type: "MOVE",
+      unitId: "s1",
+      to: { q: -1, r: 0 },
+    });
+
+    expect(result.status).toBe("PLAYER_LOSE");
+    expect(Number(guild.gold)).toBeLessThan(1000);
+    expect(fleet).toMatchObject({ activity: "DOCKED", dockedPortId: HOME_PORT_ID });
+
+    const endCall = emit.mock.calls.find(([event]) => event === BATTLE_END_EVENT);
+    expect(endCall).toBeDefined();
+    const payload = endCall![1] as { payload: { status: string; ransom?: number } };
+    expect(payload.payload.status).toBe("PLAYER_LOSE");
+    expect(payload.payload.ransom).toBeGreaterThan(0);
+    expect(payload.payload.ransom).toBe(1000 - Number(guild.gold));
   });
 
   it("awards exp to the fleet's officers on PLAYER_WIN (M23)", async () => {

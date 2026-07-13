@@ -94,8 +94,9 @@ export class BattleService {
         },
       });
 
+      let ransom: number | undefined;
       if (outcome) {
-        await this.resolveBattleEnd(tx, state, outcome);
+        ransom = await this.resolveBattleEnd(tx, state, outcome);
       }
 
       this.events.emit(BATTLE_UPDATE_EVENT, {
@@ -103,25 +104,28 @@ export class BattleService {
         payload: { battleId, state, log: log[log.length - 1] },
       });
       if (outcome) {
-        this.events.emit(BATTLE_END_EVENT, { worldId, payload: { battleId, status } });
+        this.events.emit(BATTLE_END_EVENT, { worldId, payload: { battleId, status, ransom } });
       }
 
       return { state, status };
     });
   }
 
-  /** 戰後結算：持久化船隻損傷/沉沒、戰利品或贖金，並讓艦隊恢復可航行狀態（docs/05 §5）。 */
+  /**
+   * 戰後結算：持久化船隻損傷/沉沒、戰利品或贖金，並讓艦隊恢復可航行狀態（docs/05 §5）。
+   * 回傳值僅 PLAYER_LOSE 有意義（扣了多少贖金），供上層推播給前端過場畫面顯示。
+   */
   private async resolveBattleEnd(
     tx: Prisma.TransactionClient,
     state: BattleState,
     outcome: "PLAYER_WIN" | "PLAYER_LOSE" | "FLED",
-  ): Promise<void> {
+  ): Promise<number | undefined> {
     const playerUnits = state.units.filter((u) => u.side === "PLAYER");
-    if (playerUnits.length === 0) return;
+    if (playerUnits.length === 0) return undefined;
 
     const ships = await tx.ship.findMany({ where: { id: { in: playerUnits.map((u) => u.id) } } });
     const fleetId = ships[0]?.fleetId;
-    if (!fleetId) return;
+    if (!fleetId) return undefined;
     const fleet = await tx.fleet.findUniqueOrThrow({ where: { id: fleetId } });
 
     const survivingCount = playerUnits.filter((u) => !u.destroyed).length;
@@ -148,8 +152,10 @@ export class BattleService {
       }
       await tx.fleet.update({ where: { id: fleetId }, data: { activity: "SAILING" } });
       await awardExpToFleetOfficers(tx, fleetId, BALANCE.OFFICER_EXP_PER_BATTLE_WIN);
+      return undefined;
     } else if (outcome === "FLED") {
       await tx.fleet.update({ where: { id: fleetId }, data: { activity: "SAILING" } });
+      return undefined;
     } else {
       const guild = await tx.guild.findUniqueOrThrow({ where: { id: fleet.guildId } });
       const ransom = Math.round(Number(guild.gold) * BALANCE.DEFEAT_RANSOM_RATIO);
@@ -168,6 +174,7 @@ export class BattleService {
           route: Prisma.DbNull,
         },
       });
+      return ransom;
     }
   }
 }

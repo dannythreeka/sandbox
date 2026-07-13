@@ -10,6 +10,7 @@ import {
   ERROR_MESSAGES_ZH_TW,
   firstNavigableHeading,
   HEXMAP,
+  HOME_PORT_ID,
   openingNarrativeFor,
   portById,
   regionForCoord,
@@ -249,14 +250,20 @@ export default function PlayPage() {
       setBattleLog((prev) => [...prev, payload.log]);
     });
     socket.on(WS_EVENTS.BATTLE_END, (payload: ServerBattleEndPayload) => {
-      setNotice(
-        payload.status === "PLAYER_WIN"
-          ? "戰鬥勝利！"
-          : payload.status === "FLED"
-            ? "成功脫離戰場。"
-            : "艦隊戰敗，被拖回母港療傷……",
-      );
-      setNoticeKind(null);
+      if (payload.status === "PLAYER_LOSE") {
+        // bug 修復：戰敗被拖回母港是刻意設計的懲罰，但過去只用一閃即逝的
+        // notice 顯示，很容易被忽略／切分頁錯過，玩家常常搞不清楚為什麼
+        // 「無緣無故」回到起始城市。改用跟入港一樣明確、不可略過的過場畫面。
+        setCutscene({
+          kind: "defeat",
+          portId: HOME_PORT_ID,
+          day: tickRef.current,
+          ransom: payload.ransom,
+        });
+      } else {
+        setNotice(payload.status === "PLAYER_WIN" ? "戰鬥勝利！" : "成功脫離戰場。");
+        setNoticeKind(null);
+      }
       setBattleId(null);
       setBattleState(null);
       api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
