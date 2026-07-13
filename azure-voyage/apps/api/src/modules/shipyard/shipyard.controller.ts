@@ -3,9 +3,11 @@ import {
   BuildShipInputSchema,
   RepairInputSchema,
   SellShipInputSchema,
+  SplitFleetInputSchema,
   type BuildShipInput,
   type RepairInput,
   type SellShipInput,
+  type SplitFleetInput,
 } from "@azure-voyage/shared";
 import { CurrentUser } from "../../common/auth/current-user.decorator";
 import { JwtAuthGuard } from "../../common/auth/jwt-auth.guard";
@@ -46,5 +48,15 @@ export class ShipyardController {
     @Body(new ZodPipe(SellShipInputSchema)) input: SellShipInput,
   ) {
     return this.shipyardService.sell(user.userId, worldId, portId, input);
+  }
+
+  @Post("split-fleet")
+  splitFleet(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("worldId") worldId: string,
+    @Param("portId") portId: string,
+    @Body(new ZodPipe(SplitFleetInputSchema)) input: SplitFleetInput,
+  ) {
+    return this.shipyardService.splitFleet(user.userId, worldId, portId, input);
   }
 }

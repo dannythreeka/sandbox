@@ -12,12 +12,16 @@ interface Fixture {
   battleWins?: number;
   shareRows?: number[];
   ships?: { shipClassId: string }[];
+  /** M29：模擬玩家擁有多支艦隊時，這場世界裡的艦隊 id 清單 */
+  fleetIds?: string[];
+  /** 若設定，battle.count 只在查詢的 fleetId 清單包含這個 id 時才回報有勝場 */
+  battleWinFleetId?: string;
 }
 
 function makePrisma(opts: Fixture) {
   const world = { id: "w1", status: opts.worldStatus ?? "ACTIVE", questChapter: opts.questChapter ?? 0 };
   const guild = { id: "g-player", worldId: "w1", kind: "PLAYER", gold: BigInt(opts.gold ?? 0), fame: 0 };
-  const fleet = { id: "f1", worldId: "w1", guildId: "g-player" };
+  const fleetIds = opts.fleetIds ?? ["f1"];
 
   const worldUpdateSpy = jest.fn(async ({ data }: { data: { questChapter: number } }) => {
     Object.assign(world, data);
@@ -50,10 +54,15 @@ function makePrisma(opts: Fixture) {
       count: jest.fn(async () => opts.officerCount ?? 0),
     },
     fleet: {
-      findFirst: jest.fn(async () => fleet),
+      findMany: jest.fn(async () => fleetIds.map((id) => ({ id }))),
     },
     battle: {
-      count: jest.fn(async () => opts.battleWins ?? 0),
+      count: jest.fn(async ({ where }: { where: { fleetId: { in: string[] } } }) => {
+        if (opts.battleWinFleetId !== undefined) {
+          return where.fleetId.in.includes(opts.battleWinFleetId) ? 1 : 0;
+        }
+        return opts.battleWins ?? 0;
+      }),
     },
     ship: {
       findMany: jest.fn(async () => opts.ships ?? []),
@@ -127,6 +136,16 @@ describe("QuestService.checkProgress", () => {
     const won = makePrisma({ questChapter: 2, battleWins: 1 });
     await new QuestService(won.prisma, new EventEmitter2()).checkProgress("w1", 1);
     expect(won.world.questChapter).toBe(3);
+  });
+
+  it("ch3: counts a battle win from ANY of the player's fleets (M29 multi-fleet)", async () => {
+    const winOnSecondFleet = makePrisma({
+      questChapter: 2,
+      fleetIds: ["f1", "f2"],
+      battleWinFleetId: "f2",
+    });
+    await new QuestService(winOnSecondFleet.prisma, new EventEmitter2()).checkProgress("w1", 1);
+    expect(winOnSecondFleet.world.questChapter).toBe(3);
   });
 
   it("ch4: requires 20%+ influence share at some port", async () => {

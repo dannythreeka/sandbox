@@ -79,10 +79,13 @@ export class QuestService {
         return count >= 2;
       }
       case "ch3": {
-        const fleet = await this.prisma.fleet.findFirst({ where: { worldId, guildId: playerGuildId } });
-        if (!fleet) return false;
+        // M29：玩家可能同時有多支艦隊，任一支艦隊贏過海戰都算數
+        const fleets = await this.prisma.fleet.findMany({
+          where: { worldId, guildId: playerGuildId },
+          select: { id: true },
+        });
         const wins = await this.prisma.battle.count({
-          where: { worldId, fleetId: fleet.id, status: "PLAYER_WIN" },
+          where: { worldId, fleetId: { in: fleets.map((f) => f.id) }, status: "PLAYER_WIN" },
         });
         return wins >= 1;
       }
