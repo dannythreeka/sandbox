@@ -6,6 +6,7 @@ import {
   CONTENT_VERSION,
   PORTS,
   regionsDominatedBy,
+  resolvePortId,
   shipClassById,
   WorldSnapshotSchema,
   type CreateWorldInput,
@@ -229,6 +230,38 @@ export class WorldService {
       }),
       this.prisma.discoveryRecord.count({ where: { worldId, registered: true } }),
     ]);
+
+    // M21 縮編後既有存檔可能還有艦隊/待業航海士停在已刪除的港口 id；讀取時順便自我修復
+    // （改停到最近的存續港口），避免之後設定航線等操作對著不存在的港口 id 崩潰。
+    const staleFleets = fleets.filter(
+      (f) => f.dockedPortId !== null && resolvePortId(f.dockedPortId) !== f.dockedPortId,
+    );
+    if (staleFleets.length > 0) {
+      await this.prisma.$transaction(
+        staleFleets.map((f) =>
+          this.prisma.fleet.update({
+            where: { id: f.id },
+            data: { dockedPortId: resolvePortId(f.dockedPortId!) },
+          }),
+        ),
+      );
+      for (const f of staleFleets) f.dockedPortId = resolvePortId(f.dockedPortId!);
+    }
+    const staleTavernOfficers = (
+      await this.prisma.officer.findMany({
+        where: { worldId, fleetId: null, locationPortId: { not: null } },
+      })
+    ).filter((o) => o.locationPortId !== null && resolvePortId(o.locationPortId) !== o.locationPortId);
+    if (staleTavernOfficers.length > 0) {
+      await this.prisma.$transaction(
+        staleTavernOfficers.map((o) =>
+          this.prisma.officer.update({
+            where: { id: o.id },
+            data: { locationPortId: resolvePortId(o.locationPortId!) },
+          }),
+        ),
+      );
+    }
 
     const playerGuild = guilds.find((g) => g.kind === "PLAYER");
     if (!playerGuild) throw new GameError("INTERNAL", "world has no player guild");

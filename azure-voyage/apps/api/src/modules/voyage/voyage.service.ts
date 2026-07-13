@@ -16,6 +16,7 @@ import {
   portById,
   PORTS,
   regionForCoord,
+  resolvePortId,
   RouteViewSchema,
   shipClassById,
   stepAlongRoute,
@@ -93,8 +94,17 @@ export class VoyageService {
       targetPortId = portAtCoord(goal)?.id;
     }
 
-    const start = fleet.activity === "DOCKED" && fleet.dockedPortId
-      ? portById(fleet.dockedPortId).coord
+    let dockedPortId = fleet.dockedPortId;
+    if (dockedPortId) {
+      // M21 縮編後既有存檔可能還停在已刪除的港口 id；自我修復成最近的存續港口再繼續。
+      const resolved = resolvePortId(dockedPortId);
+      if (resolved !== dockedPortId) {
+        await this.prisma.fleet.update({ where: { id: fleet.id }, data: { dockedPortId: resolved } });
+        dockedPortId = resolved;
+      }
+    }
+    const start = fleet.activity === "DOCKED" && dockedPortId
+      ? portById(dockedPortId).coord
       : axialToOddr({ q: fleet.posQ, r: fleet.posR });
 
     const path = findPath(HEXMAP, start, goal);

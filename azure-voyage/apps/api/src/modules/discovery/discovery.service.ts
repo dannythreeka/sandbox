@@ -7,7 +7,7 @@ import {
   DISCOVERIES,
   explorationSuccessChance,
   offsetDistance,
-  portById,
+  portByIdOrFallback,
   regionForCoord,
   Rng,
   weatherAtTick,
@@ -110,7 +110,7 @@ export class DiscoveryService {
     const world = await this.prisma.gameWorld.findUnique({ where: { id: worldId } });
     if (!world || world.userId !== userId) throw new GameError("NOT_FOUND");
 
-    const port = portById(portId);
+    const port = portByIdOrFallback(portId);
     if (port.size < BALANCE.GUILD_HALL_MIN_PORT_SIZE) throw new GameError("NO_GUILD_HALL");
 
     return this.prisma.$transaction(async (tx) => {

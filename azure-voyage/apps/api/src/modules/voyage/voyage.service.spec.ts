@@ -149,6 +149,20 @@ describe("VoyageService.setRoute", () => {
       code: "FLEET_BUSY",
     });
   });
+
+  // M21 縮編後既有存檔可能還停在已刪除的港口（如維雷諾）；不該讓 portById() 崩潰，
+  // 而是自我修復成最近的存續港口再算航線（見 docs/13）。
+  it("self-heals a fleet docked at a port removed in M21 before computing the route", async () => {
+    const fleet = makeFleet({ dockedPortId: "port.amber_gulf.vireno" });
+    const { prisma } = makePrismaMock({ fleet });
+    const { events } = makeEventsMock();
+    const service = new VoyageService(prisma, events);
+
+    const route = await service.setRoute("u1", "w1", "f1", { targetPortId: NORTH_PORT_ID });
+
+    expect(route.waypoints[0]).toEqual(portById("port.amber_gulf.perlan").coord);
+    expect(fleet.dockedPortId).toBe("port.amber_gulf.perlan");
+  });
 });
 
 describe("VoyageService.depart", () => {

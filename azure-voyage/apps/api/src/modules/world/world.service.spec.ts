@@ -3,6 +3,35 @@ import type { GameWorld } from "@prisma/client";
 import type { PrismaService } from "../../prisma/prisma.service";
 import { WorldService } from "./world.service";
 
+interface FleetRow {
+  id: string;
+  worldId: string;
+  guildId: string;
+  name: string;
+  activity: "DOCKED" | "SAILING" | "ANCHORED" | "EXPLORING" | "IN_BATTLE";
+  posQ: number;
+  posR: number;
+  dockedPortId: string | null;
+  food: number;
+  water: number;
+  morale: number;
+}
+
+interface OfficerRow {
+  id: string;
+  worldId: string;
+  fleetId: string | null;
+  locationPortId: string | null;
+  name: string;
+  portrait: string;
+  role: string | null;
+  stats: { lead: number; nav: number; combat: number; trade: number; lore: number };
+  skills: string[];
+  loyalty: number;
+  salary: number;
+  persona: null;
+}
+
 function worldRow(overrides: Partial<GameWorld> = {}): GameWorld {
   return {
     id: "w1",
@@ -92,5 +121,133 @@ describe("WorldService", () => {
     const abandoned = await service.abandon("u1", "w1");
     expect(abandoned.status).toBe("ABANDONED");
     await expect(service.list("u1")).resolves.toHaveLength(0);
+  });
+});
+
+// M21 縮編後既有存檔可能還有艦隊/待業航海士停在已刪除的港口 id（如 port.amber_gulf.vireno）；
+// getSnapshot() 讀取時要自我修復成最近的存續港口，而不是讓 portById() 崩潰。
+describe("WorldService#getSnapshot self-heal for removed port ids", () => {
+  function makeSnapshotPrismaMock(fleet: FleetRow, tavernOfficers: OfficerRow[]) {
+    const fleets = [fleet];
+    const officers = [...tavernOfficers];
+    const prisma = {
+      gameWorld: {
+        findUnique: jest.fn(async ({ where }: { where: { id: string } }) =>
+          where.id === "w1" ? worldRow({ id: "w1", userId: "u1" }) : null,
+        ),
+      },
+      guild: {
+        findMany: jest.fn(async () => [
+          { id: "g-player", worldId: "w1", kind: "PLAYER", name: "玩家商會", gold: BigInt(1000), fame: 0 },
+        ]),
+      },
+      fleet: {
+        findMany: jest.fn(async () => fleets.map((f) => ({ ...f, ships: [], officers: [] }))),
+        update: jest.fn(async ({ where, data }: { where: { id: string }; data: Partial<FleetRow> }) => {
+          const f = fleets.find((x) => x.id === where.id)!;
+          Object.assign(f, data);
+          return f;
+        }),
+      },
+      officer: {
+        findMany: jest.fn(async () => officers.map((o) => ({ ...o }))),
+        update: jest.fn(async ({ where, data }: { where: { id: string }; data: Partial<OfficerRow> }) => {
+          const o = officers.find((x) => x.id === where.id)!;
+          Object.assign(o, data);
+          return o;
+        }),
+      },
+      portInfluence: { findMany: jest.fn(async () => []) },
+      discoveryRecord: { count: jest.fn(async () => 0) },
+      $transaction: jest.fn(async (arg: unknown) => {
+        if (typeof arg === "function") return arg(prisma);
+        return Promise.all(arg as Promise<unknown>[]);
+      }),
+    } as unknown as PrismaService;
+    return { prisma, fleets, officers };
+  }
+
+  it("relocates a fleet docked at a removed port to the nearest surviving port", async () => {
+    const fleet: FleetRow = {
+      id: "f1",
+      worldId: "w1",
+      guildId: "g-player",
+      name: "第一艦隊",
+      activity: "DOCKED",
+      posQ: 0,
+      posR: 0,
+      dockedPortId: "port.amber_gulf.vireno", // M21 刪除的港口（維雷諾）
+      food: 10,
+      water: 10,
+      morale: 100,
+    };
+    const { prisma, fleets } = makeSnapshotPrismaMock(fleet, []);
+    const service = new WorldService(prisma);
+
+    const snapshot = await service.getSnapshot("u1", "w1");
+
+    expect(snapshot.fleets[0].dockedPortId).toBe("port.amber_gulf.perlan");
+    expect(fleets[0].dockedPortId).toBe("port.amber_gulf.perlan"); // 已寫回 DB
+    expect(prisma.fleet.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("relocates a tavern officer stranded at a removed port", async () => {
+    const fleet: FleetRow = {
+      id: "f1",
+      worldId: "w1",
+      guildId: "g-player",
+      name: "第一艦隊",
+      activity: "DOCKED",
+      posQ: 0,
+      posR: 0,
+      dockedPortId: "port.amber_gulf.aurelia",
+      food: 10,
+      water: 10,
+      morale: 100,
+    };
+    const officer: OfficerRow = {
+      id: "o1",
+      worldId: "w1",
+      fleetId: null,
+      locationPortId: "port.silkwind.mashqet", // M21 刪除的港口（瑪什凱）
+      name: "待業航海士",
+      portrait: "p.png",
+      role: null,
+      stats: { lead: 10, nav: 10, combat: 10, trade: 10, lore: 10 },
+      skills: [],
+      loyalty: 100,
+      salary: 10,
+      persona: null,
+    };
+    const { prisma, officers } = makeSnapshotPrismaMock(fleet, [officer]);
+    const service = new WorldService(prisma);
+
+    await service.getSnapshot("u1", "w1");
+
+    expect(officers[0].locationPortId).toBe("port.silkwind.qeshvar");
+    expect(prisma.officer.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves fleets docked at surviving ports untouched", async () => {
+    const fleet: FleetRow = {
+      id: "f1",
+      worldId: "w1",
+      guildId: "g-player",
+      name: "第一艦隊",
+      activity: "DOCKED",
+      posQ: 0,
+      posR: 0,
+      dockedPortId: "port.amber_gulf.aurelia",
+      food: 10,
+      water: 10,
+      morale: 100,
+    };
+    const { prisma } = makeSnapshotPrismaMock(fleet, []);
+    const service = new WorldService(prisma);
+
+    const snapshot = await service.getSnapshot("u1", "w1");
+
+    expect(snapshot.fleets[0].dockedPortId).toBe("port.amber_gulf.aurelia");
+    expect(prisma.fleet.update).not.toHaveBeenCalled();
   });
 });
