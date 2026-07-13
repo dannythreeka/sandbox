@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { investmentGain, portById, settleInfluence, type InfluenceEntry } from "@azure-voyage/shared";
+import { investmentGain, portByIdOrFallback, settleInfluence, type InfluenceEntry } from "@azure-voyage/shared";
 import { GameError } from "../../common/errors/game-error";
 import { PrismaService } from "../../prisma/prisma.service";
 
@@ -39,7 +39,7 @@ export class InfluenceService {
   async invest(userId: string, worldId: string, portId: string, amount: number): Promise<{ gain: number }> {
     const world = await this.prisma.gameWorld.findUnique({ where: { id: worldId } });
     if (!world || world.userId !== userId) throw new GameError("NOT_FOUND");
-    portById(portId); // 驗證 portId 存在（未知 id 會丟出，屬內容資料錯誤而非使用者輸入）
+    portByIdOrFallback(portId); // 驗證 portId 存在；若是 M21 刪除的舊港口 id 則靜默視為有效（自我修復由 world.service 負責）
 
     const guild = await this.prisma.guild.findFirstOrThrow({ where: { worldId, kind: "PLAYER" } });
     if (Number(guild.gold) < amount) throw new GameError("INSUFFICIENT_GOLD");

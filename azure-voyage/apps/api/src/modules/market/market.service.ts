@@ -5,7 +5,7 @@ import {
   effectiveBuyPrice,
   effectiveSellPrice,
   goodwillFromTrade,
-  portById,
+  portByIdOrFallback,
   shipClassById,
   type PortDetail,
   type TradeFill,
@@ -28,7 +28,7 @@ export class MarketService {
     const world = await this.prisma.gameWorld.findUnique({ where: { id: worldId } });
     if (!world || world.userId !== userId) throw new GameError("NOT_FOUND");
 
-    const port = portById(portId);
+    const port = portByIdOrFallback(portId);
     const portState = await this.prisma.portState.findUnique({
       where: { worldId_portId: { worldId, portId } },
       include: { market: true, influences: { include: { guild: true } } },
