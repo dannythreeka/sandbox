@@ -281,25 +281,32 @@ describe("MarketService.getTradeRouteSuggestions", () => {
   const TARGET_PORT_ID = "port.amber_gulf.mirenport";
 
   function makeTradeRoutePrisma() {
-    const world = { id: "w1", userId: "u1", status: "ACTIVE" };
+    const world = { id: "w1", userId: "u1", status: "ACTIVE", currentTick: 10 };
     const guild = { id: "g1", worldId: "w1", kind: "PLAYER" };
-    const portStates = [
+    const originState = {
+      portId: ORIGIN_PORT_ID,
+      market: [{ commodityId: "com.wine", price: 10, stock: 100, baseStock: 100 }],
+      influences: [] as { guildId: string; share: number }[],
+    };
+    // M32：非起點港只用玩家「已去過」留下的舊情報（PortIntel），不再讀即時市場
+    const intelRows = [
       {
-        portId: ORIGIN_PORT_ID,
-        market: [{ commodityId: "com.wine", price: 10, stock: 100, baseStock: 100 }],
-        influences: [] as { guildId: string; share: number }[],
-      },
-      {
+        worldId: "w1",
         portId: TARGET_PORT_ID,
-        market: [{ commodityId: "com.wine", price: 30, stock: 100, baseStock: 100 }],
-        influences: [] as { guildId: string; share: number }[],
+        lastVisitedTick: 8,
+        market: [{ commodityId: "com.wine", buyPrice: 27, sellPrice: 30 }],
       },
     ];
 
     const prisma = {
       gameWorld: { findUnique: jest.fn(async () => world) },
       guild: { findFirstOrThrow: jest.fn(async () => guild) },
-      portState: { findMany: jest.fn(async () => portStates) },
+      portState: {
+        findUnique: jest.fn(async ({ where }: { where: { worldId_portId: { portId: string } } }) =>
+          where.worldId_portId.portId === ORIGIN_PORT_ID ? originState : null,
+        ),
+      },
+      portIntel: { findMany: jest.fn(async () => intelRows) },
     } as unknown as PrismaService;
 
     return { prisma };
@@ -316,8 +323,19 @@ describe("MarketService.getTradeRouteSuggestions", () => {
       commodityId: "com.wine",
       buyPortId: ORIGIN_PORT_ID,
       sellPortId: TARGET_PORT_ID,
+      sellIntelAgeTicks: 2, // currentTick(10) - lastVisitedTick(8)
     });
     expect(suggestions[0].profitPerUnit).toBeGreaterThan(0);
+  });
+
+  it("excludes ports the player has never actually visited (no PortIntel row)", async () => {
+    const { prisma } = makeTradeRoutePrisma();
+    (prisma.portIntel.findMany as jest.Mock).mockResolvedValueOnce([]);
+    const service = new MarketService(prisma);
+
+    const suggestions = await service.getTradeRouteSuggestions("u1", "w1", ORIGIN_PORT_ID);
+
+    expect(suggestions).toHaveLength(0);
   });
 
   it("rejects an unknown origin port", async () => {

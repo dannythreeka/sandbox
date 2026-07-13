@@ -59,6 +59,7 @@ model GameWorld {
   battles      Battle[]
   discoveries  DiscoveryRecord[]
   aiLogs       AiGenerationLog[]
+  portIntel    PortIntel[]
 
   @@index([userId, status])
 }
@@ -215,6 +216,21 @@ model MarketStock {
   priceHistory Json      @default("[]") // [{t,p}] 環形陣列 max 60
 
   @@unique([portStateId, commodityId])
+}
+
+// 玩家對某港口市場的「已知情報」（M31→M32，市場情報不完全）：只在玩家實際
+// 停靠該港的當下更新一次快照，之後就是固定不變的舊情報，直到下次真的再去一趟。
+// 停靠期間時間不會前進（docs/01 §核心循環），所以「抵達當下」snapshot 一次即可。
+model PortIntel {
+  id              String    @id @default(cuid())
+  worldId         String
+  world           GameWorld @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  portId          String // contentId
+  lastVisitedTick Int
+  market          Json // [{commodityId, buyPrice, sellPrice}]（抵達當下算好的有效買賣價，不隨後續影響力變動更新）
+
+  @@unique([worldId, portId])
+  @@index([worldId])
 }
 
 model PortInfluence {

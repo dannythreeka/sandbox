@@ -177,6 +177,7 @@ describe("WorldService#getSnapshot self-heal for removed port ids", () => {
       },
       portInfluence: { findMany: jest.fn(async () => []) },
       discoveryRecord: { count: jest.fn(async () => 0) },
+      portIntel: { findMany: jest.fn(async () => []) },
       battle: { findMany: jest.fn(async () => battles) },
       $transaction: jest.fn(async (arg: unknown) => {
         if (typeof arg === "function") return arg(prisma);
