@@ -159,6 +159,12 @@ export default function PlayPage() {
   const latestFleetRef = useRef<FleetTickDelta | null>(null);
   const tripStartRef = useRef<{ tick: number; food: number; water: number } | null>(null);
   const tripEventCountRef = useRef(0);
+  // M30：跨艦隊事件通知要能查到「不是目前選中艦隊」的名字；同樣是 ref（見上方
+  // stale-closure 說明），跟著 snapshot 更新。
+  const fleetsRef = useRef<WorldSnapshot["fleets"]>([]);
+  useEffect(() => {
+    fleetsRef.current = snapshot?.fleets ?? [];
+  }, [snapshot]);
 
   useEffect(() => {
     if (!getAccessToken()) {
@@ -211,7 +217,16 @@ export default function PlayPage() {
       setError((prev) => (prev === ERROR_MESSAGES_ZH_TW.WORLD_BUSY ? null : prev));
     });
     socket.on(WS_EVENTS.SERVER_ARRIVAL, (payload: ServerArrivalPayload) => {
-      if (playerFleetIdRef.current && payload.fleetId !== playerFleetIdRef.current) return;
+      const isSelectedFleet = !playerFleetIdRef.current || payload.fleetId === playerFleetIdRef.current;
+      if (!isSelectedFleet) {
+        // M30：不是目前操作中的艦隊——不搶用選中艦隊的過場/航程摘要狀態，
+        // 只用一則輕量通知提醒是「哪一支」艦隊抵達，畫面焦點不強制切換。
+        const otherName = fleetsRef.current.find((f) => f.id === payload.fleetId)?.name ?? "另一支艦隊";
+        setNotice(`「${otherName}」已抵達 ${portById(payload.portId).name}`);
+        setNoticeKind(null);
+        api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
+        return;
+      }
       // M13：入港過場的航程摘要——自出港以來累計，後端無感知
       const start = tripStartRef.current;
       const nowFood = latestFleetRef.current?.food ?? start?.food ?? 0;
@@ -233,14 +248,21 @@ export default function PlayPage() {
       api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
     });
     socket.on(WS_EVENTS.SERVER_EVENT, (payload: ServerEventPayload) => {
-      if (!payload.fleetId || payload.fleetId === playerFleetIdRef.current) {
+      const isSelectedFleet = !payload.fleetId || payload.fleetId === playerFleetIdRef.current;
+      if (isSelectedFleet) {
         tripEventCountRef.current += 1;
+        // M14：風暴事件實際觸發（與「風暴醞釀」天氣預兆不同）在海圖上閃光＋震動一次
+        if (payload.event.type === "STORM") {
+          setStormFlashTrigger((n) => n + 1);
+        }
       }
-      // M14：風暴事件實際觸發（與「風暴醞釀」天氣預兆不同）在海圖上閃光＋震動一次
-      if (payload.event.type === "STORM") {
-        setStormFlashTrigger((n) => n + 1);
-      }
-      setNotice(payload.event.narrative);
+      // M30：事件屬於「非選中」艦隊時，通知文字掛上該艦隊名字，不然玩家會誤以為
+      // 是自己正在看的這支艦隊發生了事
+      const otherName =
+        payload.fleetId && !isSelectedFleet
+          ? (fleetsRef.current.find((f) => f.id === payload.fleetId)?.name ?? "另一支艦隊")
+          : null;
+      setNotice(otherName ? `「${otherName}」：${payload.event.narrative}` : payload.event.narrative);
       setNoticeKind(
         payload.event.type === "STORM" || payload.event.type === "FESTIVAL" || payload.event.type === "RUMOR"
           ? (payload.event.type.toLowerCase() as "storm" | "festival" | "rumor")
@@ -340,6 +362,14 @@ export default function PlayPage() {
   const visitedPortIds = useMemo(
     () => new Set(snapshot?.knownPorts.filter((p) => p.visited).map((p) => p.portId) ?? []),
     [snapshot],
+  );
+  // M30：海圖同時標出玩家其他艦隊（非目前選中）的位置，不用逐幀動畫，僅供概覽
+  const otherFleetMarkers = useMemo(
+    () =>
+      (snapshot?.fleets ?? [])
+        .filter((f) => f.id !== fleet?.id)
+        .map((f) => ({ id: f.id, name: f.name, pos: axialToOddr(f.pos) })),
+    [snapshot, fleet?.id],
   );
   // 伺服器存 axial 座標；SeaMap 畫布用 offset（col,row）座標系
   const fleetOffsetPos = pos ? axialToOddr(pos) : null;
@@ -784,6 +814,7 @@ export default function PlayPage() {
             sailing={activity === "SAILING"}
             routeWaypoints={route?.waypoints ?? null}
             visitedPortIds={visitedPortIds}
+            otherFleets={otherFleetMarkers}
             previewHeading={
               (activity === "DOCKED" || activity === "ANCHORED" ? displayedHeading : null) as
                 | 0

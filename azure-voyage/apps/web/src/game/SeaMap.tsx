@@ -56,12 +56,23 @@ function weatherEffectsDisabled(): boolean {
   return window.localStorage.getItem(WEATHER_EFFECTS_KEY) === "1";
 }
 
+export interface OtherFleetMarker {
+  id: string;
+  pos: OffsetCoord;
+  name: string;
+}
+
 export interface SeaMapProps {
   fleetPos: OffsetCoord;
   /** SAILING 時自動開啟鏡頭跟隨 */
   sailing: boolean;
   routeWaypoints: OffsetCoord[] | null;
   visitedPortIds: ReadonlySet<string>;
+  /**
+   * M30：玩家其他艦隊（非目前操作中）的位置——只畫簡化標記＋名稱標籤，
+   * 不做逐幀內插動畫（每次快照更新才重繪一次，不像主力艦隊那樣平滑移動）。
+   */
+  otherFleets?: OtherFleetMarker[];
   onPortClick: (portId: string) => void;
   /** 點擊任一可航行海格（自由航行）；點到港口格會走 onPortClick */
   onSeaClick: (coord: OffsetCoord) => void;
@@ -160,11 +171,13 @@ export function SeaMap({
   windDir = null,
   weather = null,
   stormFlashTrigger = 0,
+  otherFleets = [],
 }: SeaMapProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
   const worldRef = useRef<Container | null>(null);
   const shipRef = useRef<Container | null>(null);
+  const otherFleetsContainerRef = useRef<Container | null>(null);
   const shipTargetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const trailRef = useRef<{ x: number; y: number; t: number }[]>([]);
   const trailGfxRef = useRef<Graphics | null>(null);
@@ -377,6 +390,11 @@ export function SeaMap({
         const initial = hexToPixel(fleetPosRef.current);
         ship.position.set(initial.x, initial.y);
         shipTargetRef.current = initial;
+
+        // ── M30：其他艦隊的簡化標記（不逐幀動畫，快照更新時整層重繪）──
+        const otherFleetsContainer = new Container();
+        otherFleetsContainerRef.current = otherFleetsContainer;
+        world.addChild(otherFleetsContainer);
 
         // 初始鏡頭置中於艦隊
         world.position.set(
@@ -721,6 +739,36 @@ export function SeaMap({
       trailGfxRef.current?.clear();
     }
   }, [fleetPos]);
+
+  // M30：其他艦隊標記——每次清單變動整層重繪（無逐幀動畫，簡化標記＋名稱）
+  useEffect(() => {
+    const container = otherFleetsContainerRef.current;
+    if (!container) return;
+    container.removeChildren();
+    for (const other of otherFleets) {
+      const center = hexToPixel(other.pos);
+      const marker = new Graphics()
+        .poly([0, -5, 4.3, 2.5, -4.3, 2.5])
+        .fill({ color: 0x1d5f92, alpha: 0.85 })
+        .stroke({ width: 1, color: 0xd9e8f5, alpha: 0.9 });
+      marker.position.set(center.x, center.y);
+      container.addChild(marker);
+
+      const label = new Text({
+        text: other.name,
+        style: {
+          fontFamily: "Palatino, Georgia, 'Noto Serif TC', serif",
+          fontSize: 8,
+          fill: 0xbcd6ec,
+          stroke: { color: 0x08111f, width: 2 },
+        },
+        resolution: 2,
+      });
+      label.anchor.set(0.5, 1);
+      label.position.set(center.x, center.y - 6);
+      container.addChild(label);
+    }
+  }, [otherFleets]);
 
   // 開始航行時自動恢復鏡頭跟隨
   useEffect(() => {
