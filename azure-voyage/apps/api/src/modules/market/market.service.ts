@@ -50,6 +50,11 @@ export class MarketService {
     const playerInfluence = portState.influences.find((i) => i.guildId === playerGuild.id);
     const playerShare = playerInfluence ? Number(playerInfluence.share) : 0;
 
+    // M25：港口人物用「解析後」的港口 id 查——已刪除的舊港口 id 沒有對應人物。
+    const notable = await this.prisma.portNotable.findUnique({
+      where: { worldId_portId: { worldId, portId: port.id } },
+    });
+
     return {
       portId,
       name: port.name,
@@ -63,6 +68,15 @@ export class MarketService {
         sellPrice: effectiveSellPrice(m.price, playerShare),
         priceHistory: m.priceHistory as { t: number; p: number }[],
       })),
+      notable: notable
+        ? {
+            id: notable.id,
+            name: notable.name,
+            portrait: notable.portrait,
+            archetype: notable.archetype,
+            persona: (notable.persona as { description: string; greeting: string } | null) ?? undefined,
+          }
+        : undefined,
       influences: portState.influences.map((i) => ({
         guildId: i.guildId,
         guildName: i.guild.name,

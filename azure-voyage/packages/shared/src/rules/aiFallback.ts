@@ -7,6 +7,7 @@ import { BALANCE } from "../content/constants";
 import { Rng } from "./rng";
 import type { AiEventProposal, NpcGoalKind, NpcPersonaGen, NpcStrategy, OfficerPersonaGen } from "../schemas/ai";
 import type { DiscoveryCategory } from "../content/discoveries";
+import type { PortNotableArchetype } from "../content/portNotables";
 
 const FALLBACK_GOAL_KINDS: readonly NpcGoalKind[] = ["EXPAND_INFLUENCE", "CONSOLIDATE", "INVEST_PORT"];
 
@@ -132,4 +133,67 @@ export function fallbackDiscoveryNarrative(input: {
   const rng = new Rng(input.seed);
   const templates = NARRATIVE_TEMPLATES_BY_CATEGORY[input.category];
   return rng.pick(templates)(input.name);
+}
+
+const PORT_NOTABLE_TEMPLATES_BY_ARCHETYPE: Record<
+  PortNotableArchetype,
+  { description: (name: string, portName: string) => string; greeting: (name: string) => string }
+> = {
+  HARBORMASTER: {
+    description: (name, portName) => `${name}是${portName}的港務總管，稅收、泊位、糾紛樣樣都得經手，說話帶著不容置疑的分量。`,
+    greeting: (name) => `「${name}在此。想在本港做生意，先把規矩弄清楚。」`,
+  },
+  FUR_TRADER: {
+    description: (name, portName) => `${name}常年往返${portName}與北境獵場之間，一身皮草行頭是走過風雪的見證。`,
+    greeting: (name) => `「${name}剛從內陸回來，貨還新鮮，你要不要瞧瞧？」`,
+  },
+  GUILD_ELDER: {
+    description: (name, portName) => `${name}是${portName}工藝商會的元老，看人看貨的眼光幾十年沒失手過。`,
+    greeting: (name) => `「${name}見識過的商隊比你想像的多，有話直說無妨。」`,
+  },
+  OLD_FISHERMAN: {
+    description: (name, portName) => `${name}在${portName}討海一輩子，海況、魚汛、天色，沒有他看不出的門道。`,
+    greeting: (name) => `「${name}啊，今天風向不對，你這艘船最好晚點出港。」`,
+  },
+  BLACKSMITH: {
+    description: (name, portName) => `${name}掌管${portName}的鍛爐，船錨到砲管，經他手打的東西沒有一件會讓人失望。`,
+    greeting: (name) => `「爐火還旺著，${name}隨時可以開工，你要修什麼？」`,
+  },
+  SILK_MERCHANT: {
+    description: (name, portName) => `${name}在${portName}經營絲織生意，貨架上的織品花色，一半是這座港口說話的方式。`,
+    greeting: (name) => `「${name}剛進了一批好貨，識貨的人才配看第一眼。」`,
+  },
+  RETIRED_PRIVATEER: {
+    description: (name, portName) => `${name}當年在${portName}外海掛過私掠旗，如今金盆洗手，酒館裡的故事多半有他一份。`,
+    greeting: (name) => `「${name}退下來了，不過老本行的門道，倒還沒忘乾淨。」`,
+  },
+  PEARL_MERCHANT: {
+    description: (name, portName) => `${name}壟斷${portName}周邊珊瑚礁的珍珠買賣，眼力毒辣，一顆珠子的成色瞞不過她。`,
+    greeting: (name) => `「歡迎，${name}這裡的珍珠，顆顆都經得起細看。」`,
+  },
+  DIVER_ELDER: {
+    description: (name, portName) => `${name}是${portName}潛水人裡輩分最高的一位，帶過的徒弟撐起了半個漁村。`,
+    greeting: (name) => `「${name}下水前總要看一眼天色，你若心急，先坐下喝口水。」`,
+  },
+  CARTOGRAPHER: {
+    description: (name, portName) => `${name}窩在${portName}的閣樓裡繪製海圖，外洋每一次新發現都會被她仔細描進圖裡。`,
+    greeting: (name) => `「${name}正在校對海圖，你帶回來的見聞，說不定能補上一角。」`,
+  },
+  HERMIT_ASTRONOMER: {
+    description: (name, portName) => `${name}獨居在${portName}邊緣，夜夜觀星，話不多，但說出口的話往往意有所指。`,
+    greeting: (name) => `「${name}見你進來——星象今夜不太尋常，你也看出來了嗎？」`,
+  },
+};
+
+/** 港口人物人設 fallback：依 archetype 決定性挑對應模板，AI 停用/失敗時使用。 */
+export function fallbackPortNotablePersonaGen(input: {
+  name: string;
+  portName: string;
+  archetype: PortNotableArchetype;
+}): NpcPersonaGen {
+  const template = PORT_NOTABLE_TEMPLATES_BY_ARCHETYPE[input.archetype];
+  return {
+    description: template.description(input.name, input.portName),
+    greeting: template.greeting(input.name),
+  };
 }

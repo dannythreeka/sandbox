@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { NPC_GOAL_KINDS, AiEventProposalSchema, NpcStrategySchema } from "../schemas/ai";
-import { fallbackNpcStrategy, fallbackRumorEvent } from "./aiFallback";
+import { NPC_GOAL_KINDS, AiEventProposalSchema, NpcPersonaGenSchema, NpcStrategySchema } from "../schemas/ai";
+import { PORT_NOTABLE_ARCHETYPES } from "../content/portNotables";
+import { fallbackNpcStrategy, fallbackPortNotablePersonaGen, fallbackRumorEvent } from "./aiFallback";
 
 describe("fallbackNpcStrategy", () => {
   it("produces a schema-valid strategy with exactly one goal in the home region", () => {
@@ -42,5 +43,16 @@ describe("fallbackRumorEvent", () => {
     const a = fallbackRumorEvent({ seed: 99, portName: "奧雷利亞" });
     const b = fallbackRumorEvent({ seed: 99, portName: "奧雷利亞" });
     expect(a).toEqual(b);
+  });
+});
+
+describe("fallbackPortNotablePersonaGen", () => {
+  it("produces a schema-valid persona mentioning the notable's name for every archetype", () => {
+    for (const archetype of PORT_NOTABLE_ARCHETYPES) {
+      const persona = fallbackPortNotablePersonaGen({ name: "測試人物", portName: "測試港", archetype });
+      expect(NpcPersonaGenSchema.safeParse(persona).success).toBe(true);
+      expect(persona.description).toContain("測試人物");
+      expect(persona.greeting).toContain("測試人物");
+    }
   });
 });

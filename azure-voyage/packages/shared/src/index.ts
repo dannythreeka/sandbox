@@ -8,6 +8,7 @@ export * from "./content/shipClasses";
 export * from "./content/npcGuilds";
 export * from "./content/officersPool";
 export * from "./content/discoveries";
+export * from "./content/portNotables";
 export * from "./content/map/hexmap";
 
 // rules

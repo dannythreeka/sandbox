@@ -42,14 +42,15 @@ model GameWorld {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
-  guilds      Guild[]
-  fleets      Fleet[]
-  officers    Officer[]
-  portStates  PortState[]
-  events      WorldEvent[]
-  battles     Battle[]
-  discoveries DiscoveryRecord[]
-  aiLogs      AiGenerationLog[]
+  guilds       Guild[]
+  fleets       Fleet[]
+  officers     Officer[]
+  portStates   PortState[]
+  portNotables PortNotable[]
+  events       WorldEvent[]
+  battles      Battle[]
+  discoveries  DiscoveryRecord[]
+  aiLogs       AiGenerationLog[]
 
   @@index([userId, status])
 }
@@ -209,6 +210,22 @@ model PortInfluence {
   goodwill    Decimal   @default(0) @db.Decimal(10, 2)
 
   @@unique([portStateId, guildId])
+}
+
+// ─────────────────── 港口人物（M25，docs/17） ───────────────────
+
+/** 每個港口配一位原創人物（港務總管/仕紳/漁夫…），可對話（DIALOGUE 共用）。 */
+model PortNotable {
+  id        String    @id @default(cuid())
+  worldId   String
+  world     GameWorld @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  portId    String // contentId
+  name      String
+  portrait  String
+  archetype String
+  persona   Json? // AI 生成個性（一次生成後固化：{description, greeting}）
+
+  @@unique([worldId, portId])
 }
 
 // ─────────────────────── 事件 ───────────────────────

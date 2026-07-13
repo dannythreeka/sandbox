@@ -36,6 +36,7 @@ function makeRedis() {
 function makePrisma(opts: {
   guild?: { id: string; name: string; aiPersona: unknown } | null;
   officer?: { id: string; name: string; persona: unknown } | null;
+  portNotable?: { id: string; name: string; persona: unknown } | null;
   worldUserId?: string;
 }) {
   const logCalls: { data: unknown }[] = [];
@@ -48,6 +49,9 @@ function makePrisma(opts: {
     },
     officer: {
       findFirst: jest.fn(async () => opts.officer ?? null),
+    },
+    portNotable: {
+      findFirst: jest.fn(async () => opts.portNotable ?? null),
     },
     aiGenerationLog: {
       create: jest.fn(async (args: { data: unknown }) => {
@@ -190,5 +194,17 @@ describe("DialogueService.chat", () => {
 
     const res = await service.chat("u1", "w1", "OFFICER", "o1", "hi");
     expect(res.reply).toBe("「有何指示？」");
+  });
+
+  it("resolves a PORT_NOTABLE target from the port notable table (M25)", async () => {
+    const { prisma } = makePrisma({
+      portNotable: { id: "n1", name: "馬瑟斯・凡登霍夫", persona: { description: "港務總管", greeting: "「歡迎來到本港。」" } },
+    });
+    const redis = makeRedis();
+    const claude = makeClaude(jest.fn(), false);
+    const service = new DialogueService(prisma, claude, makeEventGen(), redis as never);
+
+    const res = await service.chat("u1", "w1", "PORT_NOTABLE", "n1", "hi");
+    expect(res.reply).toBe("「歡迎來到本港。」");
   });
 });

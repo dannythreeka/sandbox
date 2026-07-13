@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PersonaGenViewSchema } from "./world";
 
 export const TRADE_SIDES = ["BUY", "SELL"] as const;
 export const TradeSideSchema = z.enum(TRADE_SIDES);
@@ -52,6 +53,16 @@ export const PortInfluenceViewSchema = z.object({
 });
 export type PortInfluenceView = z.infer<typeof PortInfluenceViewSchema>;
 
+/** 港口人物（M25，docs/17）：一港一位原創人物，可對話（DIALOGUE targetType PORT_NOTABLE）。 */
+export const PortNotableViewSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  portrait: z.string(),
+  archetype: z.string(),
+  persona: PersonaGenViewSchema.optional(),
+});
+export type PortNotableView = z.infer<typeof PortNotableViewSchema>;
+
 export const PortDetailSchema = z.object({
   portId: z.string(),
   name: z.string(),
@@ -61,5 +72,6 @@ export const PortDetailSchema = z.object({
   market: z.array(MarketListingSchema),
   influences: z.array(PortInfluenceViewSchema),
   playerShare: z.number(),
+  notable: PortNotableViewSchema.optional(),
 });
 export type PortDetail = z.infer<typeof PortDetailSchema>;

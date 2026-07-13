@@ -7,9 +7,11 @@ import { PersonaService } from "./persona.service";
 function makePrisma(opts: {
   guilds?: { id: string; name: string; aiPersona: unknown }[];
   officers?: { id: string; name: string; skills: string[] }[];
+  portNotables?: { id: string; name: string; portId: string; archetype: string }[];
 }) {
   const guildUpdates: { where: { id: string }; data: unknown }[] = [];
   const officerUpdates: { where: { id: string }; data: unknown }[] = [];
+  const portNotableUpdates: { where: { id: string }; data: unknown }[] = [];
   const logCalls: { data: unknown }[] = [];
 
   const prisma = {
@@ -28,6 +30,13 @@ function makePrisma(opts: {
         return args;
       }),
     },
+    portNotable: {
+      findMany: jest.fn(async () => opts.portNotables ?? []),
+      update: jest.fn(async (args: { where: { id: string }; data: unknown }) => {
+        portNotableUpdates.push(args);
+        return args;
+      }),
+    },
     aiGenerationLog: {
       create: jest.fn(async (args: { data: unknown }) => {
         logCalls.push(args);
@@ -36,7 +45,7 @@ function makePrisma(opts: {
     },
   } as unknown as PrismaService;
 
-  return { prisma, guildUpdates, officerUpdates, logCalls };
+  return { prisma, guildUpdates, officerUpdates, portNotableUpdates, logCalls };
 }
 
 function makeClaude(callStructured: jest.Mock, enabled = true) {
@@ -171,5 +180,25 @@ describe("PersonaService.refreshDuePersonas", () => {
     const data = officerUpdates[0].data as { persona: { description: string; greeting: string } };
     expect(data.persona.description.length).toBeGreaterThan(0);
     expect(data.persona.greeting.length).toBeGreaterThan(0);
+  });
+
+  it("generates port notable personas once guild/officer quota allows room (M25)", async () => {
+    const { prisma, portNotableUpdates } = makePrisma({
+      guilds: [],
+      officers: [],
+      portNotables: [
+        { id: "n1", name: "馬瑟斯・凡登霍夫", portId: "port.amber_gulf.aurelia", archetype: "HARBORMASTER" },
+      ],
+    });
+    const claude = makeClaude(jest.fn(), false);
+    const budget = { tryConsume: jest.fn(async () => true) } as unknown as AiBudgetService;
+    const service = new PersonaService(prisma, claude, budget);
+
+    await service.refreshDuePersonas("w1");
+
+    expect(portNotableUpdates).toHaveLength(1);
+    const data = portNotableUpdates[0].data as { persona: { description: string; greeting: string } };
+    expect(data.persona.description).toContain("馬瑟斯・凡登霍夫");
+    expect(data.persona.greeting).toContain("馬瑟斯・凡登霍夫");
   });
 });
