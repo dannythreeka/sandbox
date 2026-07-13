@@ -28,6 +28,7 @@ export * from "./rules/dominance";
 export * from "./rules/worldgen";
 export * from "./rules/aiFallback";
 export * from "./rules/officerGrowth";
+export * from "./rules/tradeRoutes";
 
 // schemas & errors
 export * from "./errors";

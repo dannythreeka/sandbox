@@ -38,6 +38,7 @@ import { createGameSocket } from "@/lib/socket";
 import { SeaMap } from "@/game/SeaMap";
 import { FleetOverviewPanel } from "@/game/FleetOverviewPanel";
 import { TradePanel } from "@/game/TradePanel";
+import { TradeRoutePanel } from "@/game/TradeRoutePanel";
 import { TavernShipyardPanel } from "@/game/TavernShipyardPanel";
 import { BattleScene } from "@/game/BattleScene";
 import { ExplorationPanel } from "@/game/ExplorationPanel";
@@ -766,6 +767,16 @@ export default function PlayPage() {
                 onTraded={() => {
                   api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
                 }}
+              />
+            </section>
+          )}
+
+          {activity === "DOCKED" && currentPort && (
+            <section className="panel">
+              <TradeRoutePanel
+                worldId={worldId}
+                portId={currentPort.portId}
+                onSetRoute={(targetPortId) => handleMapTarget({ targetPortId })}
               />
             </section>
           )}

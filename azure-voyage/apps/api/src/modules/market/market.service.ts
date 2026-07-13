@@ -1,19 +1,24 @@
 import { Injectable } from "@nestjs/common";
 import {
   BALANCE,
+  bestTradeRoutesFrom,
   commodityById,
   computeMarketPrice,
   effectiveBuyPrice,
   effectiveSellPrice,
   goodwillFromTrade,
+  portById,
   portByIdOrFallback,
+  PORT_IDS,
   purserTradeBonus,
   shipClassById,
   type OfficerStats,
   type PortDetail,
+  type PortMarketSnapshot,
   type TradeFill,
   type TradeInput,
   type TradeResult,
+  type TradeRouteSuggestion,
 } from "@azure-voyage/shared";
 import { GameError } from "../../common/errors/game-error";
 import { awardExpToFleetOfficers } from "../officer/officer-growth.util";
@@ -66,6 +71,49 @@ export class MarketService {
       })),
       playerShare,
     };
+  }
+
+  /**
+   * 貿易路線建議（docs/01 §4.2、M24）：以 portId 為起點，比較全部港口目前的
+   * 有效買/賣價，算出「在起點買、去哪賣」的獲利建議，按「單位獲利/距離」排序。
+   * 只讀當下市場快照，不含 PURSER 職位加成（那是實際下單時才套用的折扣，
+   * 這裡單純是市場情報，維持跟 getPortDetail 一致的簡化）。
+   */
+  async getTradeRouteSuggestions(
+    userId: string,
+    worldId: string,
+    portId: string,
+    limit = 10,
+  ): Promise<TradeRouteSuggestion[]> {
+    const world = await this.prisma.gameWorld.findUnique({ where: { id: worldId } });
+    if (!world || world.userId !== userId) throw new GameError("NOT_FOUND");
+
+    const playerGuild = await this.prisma.guild.findFirstOrThrow({ where: { worldId, kind: "PLAYER" } });
+    // 只取現行 15 港（排除 M21 刪除後留下的孤兒 PortState，見 docs/13 §2）
+    const portStates = await this.prisma.portState.findMany({
+      where: { worldId, portId: { in: [...PORT_IDS] } },
+      include: { market: true, influences: true },
+    });
+
+    const snapshots: PortMarketSnapshot[] = portStates.map((ps) => {
+      const port = portById(ps.portId);
+      const share = Number(ps.influences.find((i) => i.guildId === playerGuild.id)?.share ?? 0);
+      return {
+        portId: ps.portId,
+        portName: port.name,
+        coord: port.coord,
+        listings: ps.market.map((m) => ({
+          commodityId: m.commodityId,
+          buyPrice: effectiveBuyPrice(m.price, share),
+          sellPrice: effectiveSellPrice(m.price, share),
+        })),
+      };
+    });
+
+    const origin = snapshots.find((s) => s.portId === portId);
+    if (!origin) throw new GameError("NOT_FOUND");
+
+    return bestTradeRoutesFrom(origin, snapshots, limit);
   }
 
   /**

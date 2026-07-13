@@ -255,3 +255,57 @@ describe("MarketService.trade", () => {
     expect(state.marketStock.price).toBe(expectedPrice);
   });
 });
+
+describe("MarketService.getTradeRouteSuggestions", () => {
+  const ORIGIN_PORT_ID = "port.amber_gulf.aurelia";
+  const TARGET_PORT_ID = "port.amber_gulf.mirenport";
+
+  function makeTradeRoutePrisma() {
+    const world = { id: "w1", userId: "u1", status: "ACTIVE" };
+    const guild = { id: "g1", worldId: "w1", kind: "PLAYER" };
+    const portStates = [
+      {
+        portId: ORIGIN_PORT_ID,
+        market: [{ commodityId: "com.wine", price: 10, stock: 100, baseStock: 100 }],
+        influences: [] as { guildId: string; share: number }[],
+      },
+      {
+        portId: TARGET_PORT_ID,
+        market: [{ commodityId: "com.wine", price: 30, stock: 100, baseStock: 100 }],
+        influences: [] as { guildId: string; share: number }[],
+      },
+    ];
+
+    const prisma = {
+      gameWorld: { findUnique: jest.fn(async () => world) },
+      guild: { findFirstOrThrow: jest.fn(async () => guild) },
+      portState: { findMany: jest.fn(async () => portStates) },
+    } as unknown as PrismaService;
+
+    return { prisma };
+  }
+
+  it("suggests buying at the origin and selling at a port with a higher price", async () => {
+    const { prisma } = makeTradeRoutePrisma();
+    const service = new MarketService(prisma);
+
+    const suggestions = await service.getTradeRouteSuggestions("u1", "w1", ORIGIN_PORT_ID);
+
+    expect(suggestions).toHaveLength(1);
+    expect(suggestions[0]).toMatchObject({
+      commodityId: "com.wine",
+      buyPortId: ORIGIN_PORT_ID,
+      sellPortId: TARGET_PORT_ID,
+    });
+    expect(suggestions[0].profitPerUnit).toBeGreaterThan(0);
+  });
+
+  it("rejects an unknown origin port", async () => {
+    const { prisma } = makeTradeRoutePrisma();
+    const service = new MarketService(prisma);
+
+    await expect(
+      service.getTradeRouteSuggestions("u1", "w1", "port.nowhere.fake"),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});

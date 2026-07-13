@@ -24,6 +24,15 @@ export class MarketController {
     return this.marketService.getPortDetail(user.userId, worldId, portId);
   }
 
+  @Get("trade-routes")
+  getTradeRoutes(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("worldId") worldId: string,
+    @Param("portId") portId: string,
+  ) {
+    return this.marketService.getTradeRouteSuggestions(user.userId, worldId, portId);
+  }
+
   @Post("trade")
   trade(
     @CurrentUser() user: AuthenticatedUser,

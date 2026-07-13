@@ -21,6 +21,7 @@ import {
   type RouteView,
   type TradeInput,
   type TradeResult,
+  type TradeRouteSuggestion,
   type WorldSnapshot,
   type WorldSummary,
 } from "@azure-voyage/shared";
@@ -124,6 +125,8 @@ export const api = {
     }),
   getPort: (worldId: string, portId: string) =>
     request<PortDetail>(`/worlds/${worldId}/ports/${portId}`),
+  getTradeRoutes: (worldId: string, portId: string) =>
+    request<TradeRouteSuggestion[]>(`/worlds/${worldId}/ports/${portId}/trade-routes`),
   trade: (worldId: string, portId: string, input: TradeInput) =>
     request<TradeResult>(`/worlds/${worldId}/ports/${portId}/trade`, {
       method: "POST",
