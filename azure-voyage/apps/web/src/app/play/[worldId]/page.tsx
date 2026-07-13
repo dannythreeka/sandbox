@@ -38,6 +38,7 @@ import { createGameSocket } from "@/lib/socket";
 import { SeaMap } from "@/game/SeaMap";
 import { FleetOverviewPanel } from "@/game/FleetOverviewPanel";
 import { TradePanel } from "@/game/TradePanel";
+import { PortNotablePanel } from "@/game/PortNotablePanel";
 import { TradeRoutePanel } from "@/game/TradeRoutePanel";
 import { TavernShipyardPanel } from "@/game/TavernShipyardPanel";
 import { BattleScene } from "@/game/BattleScene";
@@ -750,6 +751,12 @@ export default function PlayPage() {
               鍵盤：←/→ 轉舵・↑ 出港/收錨・空白鍵 下錨・1–4 航速
             </span>
           </section>
+
+          {activity === "DOCKED" && currentPort && (
+            <section className="panel">
+              <PortNotablePanel worldId={worldId} portId={currentPort.portId} />
+            </section>
+          )}
 
           {activity === "DOCKED" && currentPort && fleet.ships[0] && (
             <section className="panel">

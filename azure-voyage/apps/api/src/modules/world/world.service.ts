@@ -4,6 +4,7 @@ import {
   BALANCE,
   buildNewWorldPlan,
   CONTENT_VERSION,
+  PORT_NOTABLE_TEMPLATES,
   PORTS,
   regionsDominatedBy,
   RELIC_DISCOVERY_IDS,
@@ -125,6 +126,17 @@ export class WorldService {
       select: { id: true, portId: true },
     });
     const portStateIdByPortId = new Map(portStates.map((p) => [p.portId, p.id]));
+
+    // 3.5 港口人物（M25，docs/17）：每港一位原創人物，占位人設，PersonaService 補全
+    await tx.portNotable.createMany({
+      data: PORT_NOTABLE_TEMPLATES.map((t) => ({
+        worldId: world.id,
+        portId: t.portId,
+        name: t.name,
+        portrait: t.portrait,
+        archetype: t.archetype,
+      })),
+    });
 
     // 4. 市場與影響力（批次）
     await tx.marketStock.createMany({

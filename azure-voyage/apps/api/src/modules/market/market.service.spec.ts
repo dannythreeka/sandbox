@@ -309,3 +309,42 @@ describe("MarketService.getTradeRouteSuggestions", () => {
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
+
+describe("MarketService.getPortDetail", () => {
+  const PORT_ID_2 = "port.amber_gulf.aurelia";
+
+  it("includes the port notable when one exists (M25)", async () => {
+    const world = { id: "w1", userId: "u1", status: "ACTIVE" };
+    const playerGuild = { id: "g1", worldId: "w1", kind: "PLAYER" };
+    const portState = {
+      id: "ps1",
+      prosperity: 60,
+      market: [],
+      influences: [] as { guildId: string; share: number; guild: { name: string; color: string } }[],
+    };
+    const notable = {
+      id: "n1",
+      name: "馬瑟斯・凡登霍夫",
+      portrait: "portrait.notable_aurelia",
+      archetype: "HARBORMASTER",
+      persona: { description: "港務總管", greeting: "「歡迎來到本港。」" },
+    };
+
+    const prisma = {
+      gameWorld: { findUnique: jest.fn(async () => world) },
+      portState: { findUnique: jest.fn(async () => portState) },
+      guild: { findFirstOrThrow: jest.fn(async () => playerGuild) },
+      portNotable: { findUnique: jest.fn(async () => notable) },
+    } as unknown as PrismaService;
+    const service = new MarketService(prisma);
+
+    const detail = await service.getPortDetail("u1", "w1", PORT_ID_2);
+
+    expect(detail.notable).toMatchObject({
+      id: "n1",
+      name: "馬瑟斯・凡登霍夫",
+      archetype: "HARBORMASTER",
+      persona: { description: "港務總管", greeting: "「歡迎來到本港。」" },
+    });
+  });
+});

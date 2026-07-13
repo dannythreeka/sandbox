@@ -113,6 +113,11 @@ export class DialogueService {
       const persona = guild.aiPersona as unknown as (PersonaLike & { placeholder?: boolean }) | null;
       return { name: guild.name, persona: persona && !persona.placeholder ? persona : undefined };
     }
+    if (targetType === "PORT_NOTABLE") {
+      const notable = await this.prisma.portNotable.findFirst({ where: { id: targetId, worldId } });
+      if (!notable) throw new GameError("NOT_FOUND");
+      return { name: notable.name, persona: (notable.persona as unknown as PersonaLike | null) ?? undefined };
+    }
     const officer = await this.prisma.officer.findFirst({ where: { id: targetId, worldId } });
     if (!officer) throw new GameError("NOT_FOUND");
     return { name: officer.name, persona: (officer.persona as unknown as PersonaLike | null) ?? undefined };
