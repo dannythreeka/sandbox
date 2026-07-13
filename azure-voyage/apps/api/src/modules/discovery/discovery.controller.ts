@@ -25,6 +25,11 @@ export class DiscoveryController {
     return this.discoveryService.listDiscoveries(user.userId, worldId);
   }
 
+  @Get("worlds/:worldId/discoveries/codex")
+  codex(@CurrentUser() user: AuthenticatedUser, @Param("worldId") worldId: string) {
+    return this.discoveryService.getCodex(user.userId, worldId);
+  }
+
   @Post("worlds/:worldId/ports/:portId/guild-hall/register-discovery")
   register(
     @CurrentUser() user: AuthenticatedUser,

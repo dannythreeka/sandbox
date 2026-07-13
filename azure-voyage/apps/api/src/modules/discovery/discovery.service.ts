@@ -12,22 +12,27 @@ import {
   Rng,
   weatherAtTick,
   weatherExplorationMult,
+  type DiscoveryCodexEntry,
   type DiscoveryRecordView,
   type ExploreResult,
   type RegisterDiscoveryResult,
 } from "@azure-voyage/shared";
 import { GameError } from "../../common/errors/game-error";
 import { PrismaService } from "../../prisma/prisma.service";
+import { DiscoveryNarrativeService } from "../ai/discovery-narrative.service";
 
 @Injectable()
 export class DiscoveryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly narrative: DiscoveryNarrativeService,
+  ) {}
 
   async explore(userId: string, worldId: string, fleetId: string): Promise<ExploreResult> {
     const world = await this.prisma.gameWorld.findUnique({ where: { id: worldId } });
     if (!world || world.userId !== userId) throw new GameError("NOT_FOUND");
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const fleet = await tx.fleet.findUnique({
         where: { id: fleetId },
         include: { guild: true, officers: true },
@@ -66,10 +71,10 @@ export class DiscoveryService {
       );
 
       if (!rng.chance(chance)) {
-        return { success: false, narrative: `這次的探索沒有斬獲，只能悻悻然返航。` };
+        return { success: false, narrative: `這次的探索沒有斬獲，只能悻悻然返航。` } satisfies ExploreResult;
       }
 
-      await tx.discoveryRecord.create({
+      const record = await tx.discoveryRecord.create({
         data: { worldId, discoveryId: target.id, foundTick: world.currentTick },
       });
       return {
@@ -77,8 +82,35 @@ export class DiscoveryService {
         discoveryId: target.id,
         name: target.name,
         narrative: `艦隊發現了「${target.name}」！記得回港口向學會登錄以領取獎勵。`,
-      };
+        _recordId: record.id,
+        _seed: deriveSeed(world.seed, world.currentTick, hashId(target.id), 0x9a44e),
+      } satisfies ExploreResult & { _recordId: string; _seed: number };
     });
+
+    // 圖鑑敘事（AI 生成或 fallback）不在交易內做——避免拿著 DB transaction 等網路 I/O；
+    // 失敗也不影響探索本身已經成功的事實，單純留給下次讀圖鑑時該筆還沒有敘事文本。
+    if (result.success && "_recordId" in result) {
+      const target = discoveryById(result.discoveryId!);
+      try {
+        const narrativeText = await this.narrative.generate({
+          worldId,
+          name: target.name,
+          category: target.category,
+          description: target.description,
+          seed: result._seed,
+        });
+        await this.prisma.discoveryRecord.update({
+          where: { id: result._recordId },
+          data: { narrative: narrativeText },
+        });
+      } catch {
+        // 靜默略過：圖鑑敘事是加值層，不影響探索成功的主流程。
+      }
+      const { _recordId, _seed, ...publicResult } = result;
+      return publicResult;
+    }
+
+    return result;
   }
 
   async listDiscoveries(userId: string, worldId: string): Promise<DiscoveryRecordView[]> {
@@ -95,6 +127,35 @@ export class DiscoveryService {
         category: def.category,
         rarity: def.rarity,
         registered: r.registered,
+        goldReward: def.goldReward,
+        fameReward: def.fameReward,
+        narrative: r.narrative ?? undefined,
+      };
+    });
+  }
+
+  /** 圖鑑（docs/01 §4.6）：完整發現物清單，尚未找到的以剪影呈現（不洩漏名稱/獎勵）。 */
+  async getCodex(userId: string, worldId: string): Promise<DiscoveryCodexEntry[]> {
+    const world = await this.prisma.gameWorld.findUnique({ where: { id: worldId } });
+    if (!world || world.userId !== userId) throw new GameError("NOT_FOUND");
+
+    const records = await this.prisma.discoveryRecord.findMany({ where: { worldId } });
+    const byDiscoveryId = new Map(records.map((r) => [r.discoveryId, r]));
+
+    return DISCOVERIES.map((def) => {
+      const record = byDiscoveryId.get(def.id);
+      if (!record) {
+        return { discoveryId: def.id, category: def.category, rarity: def.rarity, found: false, registered: false };
+      }
+      return {
+        discoveryId: def.id,
+        category: def.category,
+        rarity: def.rarity,
+        found: true,
+        registered: record.registered,
+        name: def.name,
+        description: def.description,
+        narrative: record.narrative ?? undefined,
         goldReward: def.goldReward,
         fameReward: def.fameReward,
       };

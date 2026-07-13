@@ -125,6 +125,8 @@ export const BALANCE = {
   VICTORY_REGIONS_REQUIRED: 4,
   /** 總資產勝利門檻（金額，難度乘數同 startingGold） */
   VICTORY_ASSET_TARGET: 800000,
+  /** 傳世遺物（S 級發現物）蒐集勝利門檻：登錄滿此數即達成（M22，docs/01 §2 執行記錄） */
+  VICTORY_RELICS_REQUIRED: 3,
 
   // ── 存檔 ──
   MAX_ACTIVE_WORLDS_PER_USER: 5,

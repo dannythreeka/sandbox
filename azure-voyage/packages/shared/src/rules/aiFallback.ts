@@ -6,6 +6,7 @@
 import { BALANCE } from "../content/constants";
 import { Rng } from "./rng";
 import type { AiEventProposal, NpcGoalKind, NpcPersonaGen, NpcStrategy, OfficerPersonaGen } from "../schemas/ai";
+import type { DiscoveryCategory } from "../content/discoveries";
 
 const FALLBACK_GOAL_KINDS: readonly NpcGoalKind[] = ["EXPAND_INFLUENCE", "CONSOLIDATE", "INVEST_PORT"];
 
@@ -101,4 +102,34 @@ export function fallbackDialogueReply(input: { seed: number; greeting?: string }
   if (input.greeting) return input.greeting;
   const rng = new Rng(input.seed);
   return rng.pick(DIALOGUE_FALLBACK_TEMPLATES);
+}
+
+const NARRATIVE_TEMPLATES_BY_CATEGORY: Record<DiscoveryCategory, ((name: string) => string)[]> = {
+  GEOGRAPHY: [
+    (name) => `艦隊在圖鑑上記下了「${name}」的位置——這片地貌透露出的訊息，或許遠比第一眼看到的更多。`,
+    (name) => `測繪員仔細描下「${name}」的輪廓，這樣的紀錄一旦收進學會檔案，往後的船隊便能少走一段冤枉路。`,
+  ],
+  BIOLOGY: [
+    (name) => `「${name}」的蹤跡被記錄了下來，博物學者對這類發現總是格外興奮，誰知道牠們還藏著什麼秘密。`,
+    (name) => `船員們議論紛紛，說起「${name}」時眼神裡帶著幾分敬畏，這一路的風浪似乎也值得了。`,
+  ],
+  RELIC: [
+    (name) => `「${name}」被打撈記錄在案，殘破的遺跡背後究竟藏著什麼樣的故事，恐怕只有時間才能給出答案。`,
+    (name) => `學會的文獻員接過「${name}」的紀錄，眼神專注——每一件遺物都是拼湊失落過往的一塊碎片。`,
+  ],
+  CELESTIAL: [
+    (name) => `夜觀「${name}」的那一刻，甲板上一片靜默，彷彿連海浪都放輕了聲音。`,
+    (name) => `「${name}」被鄭重記入星圖，天文學者相信，這樣的異象總有一天會透露更深的規律。`,
+  ],
+};
+
+/** 發現物圖鑑敘事 fallback：AI 停用/失敗時使用，依類別挑選模板池，避免千篇一律。 */
+export function fallbackDiscoveryNarrative(input: {
+  seed: number;
+  name: string;
+  category: DiscoveryCategory;
+}): string {
+  const rng = new Rng(input.seed);
+  const templates = NARRATIVE_TEMPLATES_BY_CATEGORY[input.category];
+  return rng.pick(templates)(input.name);
 }

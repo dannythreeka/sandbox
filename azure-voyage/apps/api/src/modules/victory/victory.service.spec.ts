@@ -29,6 +29,7 @@ function makePrisma(opts: {
   gold?: number;
   influenceRows: InfluenceRow[];
   ships?: { shipClassId: string }[];
+  relicsRegistered?: number;
 }) {
   const world = { id: "w1", status: opts.status ?? "ACTIVE", difficulty: "NORMAL" };
   const playerGuild = { id: "g-player", worldId: "w1", kind: "PLAYER", gold: BigInt(opts.gold ?? 0) };
@@ -57,6 +58,9 @@ function makePrisma(opts: {
     },
     ship: {
       findMany: jest.fn(async () => opts.ships ?? []),
+    },
+    discoveryRecord: {
+      count: jest.fn(async () => opts.relicsRegistered ?? 0),
     },
   } as unknown as PrismaService;
 
@@ -160,5 +164,39 @@ describe("VictoryService.checkVictory", () => {
     });
     await new VictoryService(overTarget, new EventEmitter2()).checkVictory("w1", 1);
     expect(w2.status).toBe("VICTORY"); // 金幣 + 船價合計達標
+  });
+
+  it("declares RELIC_COLLECTOR victory once enough S-rarity discoveries are registered", async () => {
+    const { prisma, world } = makePrisma({
+      gold: 0,
+      influenceRows: [],
+      ships: [],
+      relicsRegistered: BALANCE.VICTORY_RELICS_REQUIRED,
+    });
+    const events = new EventEmitter2();
+    const emitSpy = jest.spyOn(events, "emit");
+    const service = new VictoryService(prisma, events);
+
+    await service.checkVictory("w1", 3);
+
+    expect(world.status).toBe("VICTORY");
+    expect(emitSpy).toHaveBeenCalledWith(
+      WORLD_VICTORY_EVENT,
+      expect.objectContaining({ payload: expect.objectContaining({ reason: "RELIC_COLLECTOR" }) }),
+    );
+  });
+
+  it("does not declare RELIC_COLLECTOR victory below the threshold", async () => {
+    const { prisma, world } = makePrisma({
+      gold: 0,
+      influenceRows: [],
+      ships: [],
+      relicsRegistered: BALANCE.VICTORY_RELICS_REQUIRED - 1,
+    });
+    const service = new VictoryService(prisma, new EventEmitter2());
+
+    await service.checkVictory("w1", 3);
+
+    expect(world.status).toBe("ACTIVE");
   });
 });

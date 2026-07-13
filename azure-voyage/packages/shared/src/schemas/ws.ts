@@ -54,6 +54,6 @@ export type ServerErrorPayload = z.infer<typeof ServerErrorSchema>;
 export const ServerVictorySchema = z.object({
   status: WorldStatusSchema,
   tick: z.number().int().nonnegative(),
-  reason: z.enum(["REGION_DOMINANCE", "ASSET_TARGET"]),
+  reason: z.enum(["REGION_DOMINANCE", "ASSET_TARGET", "RELIC_COLLECTOR"]),
 });
 export type ServerVictoryPayload = z.infer<typeof ServerVictorySchema>;
