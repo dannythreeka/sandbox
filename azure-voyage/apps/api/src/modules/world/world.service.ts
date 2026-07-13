@@ -6,6 +6,8 @@ import {
   captainLevel,
   captainTitleForLevel,
   CONTENT_VERSION,
+  effectiveBuyPrice,
+  effectiveSellPrice,
   PORT_NOTABLE_TEMPLATES,
   PORTS,
   QUEST_CHAPTERS,
@@ -218,6 +220,24 @@ export class WorldService {
         },
       });
     }
+
+    // 7. 起始港情報（M32，市場情報不完全）：出生時人就站在家鄉港，第 0 天的市場
+    // 情報視為「即時已知」，否則新玩家一開局連自己家港的貿易建議都會被判定為
+    // 「從沒去過」。此時玩家商會尚未有任何影響力紀錄，share 固定為 0。
+    const homePortPlan = plan.ports.find((p) => p.portId === plan.homePortId)!;
+    await tx.portIntel.create({
+      data: {
+        worldId: world.id,
+        portId: plan.homePortId,
+        lastVisitedTick: 0,
+        market: homePortPlan.market.map((m) => ({
+          commodityId: m.commodityId,
+          buyPrice: effectiveBuyPrice(m.price, 0),
+          sellPrice: effectiveSellPrice(m.price, 0),
+        })),
+      },
+    });
+
     return world;
   }
 
@@ -232,7 +252,7 @@ export class WorldService {
   async getSnapshot(userId: string, worldId: string): Promise<WorldSnapshot> {
     const world = await this.getOwned(userId, worldId);
 
-    const [guilds, fleets, influenceRows, relicsFound] = await Promise.all([
+    const [guilds, fleets, influenceRows, relicsFound, visitedPortIds] = await Promise.all([
       this.prisma.guild.findMany({ where: { worldId } }),
       this.prisma.fleet.findMany({
         where: { worldId, guild: { kind: "PLAYER" } },
@@ -248,6 +268,7 @@ export class WorldService {
       this.prisma.discoveryRecord.count({
         where: { worldId, registered: true, discoveryId: { in: [...RELIC_DISCOVERY_IDS] } },
       }),
+      this.prisma.portIntel.findMany({ where: { worldId }, select: { portId: true } }),
     ]);
 
     // M21 縮編後既有存檔可能還有艦隊/待業航海士停在已刪除的港口 id；讀取時順便自我修復
@@ -296,6 +317,9 @@ export class WorldService {
     const dockedPortIds = new Set(
       fleets.map((f) => f.dockedPortId).filter((p): p is string => p !== null),
     );
+    // M32：visited 改為「真的去過（留下市場情報）」，不再只看「當下正停靠」
+    // （後者只是子集，見 docs 註記——舊版只反映停靠中港口，未追蹤歷史造訪）。
+    const everVisitedPortIds = new Set(visitedPortIds.map((v) => v.portId));
     const allShips = fleets.flatMap((f) => f.ships);
     const shipValue = allShips.reduce((acc, s) => acc + shipClassById(s.shipClassId).price, 0);
     // M31：破產倒數警示——資金 <=0 且全部艦隊只剩最後一艘船時才顯示，讓玩家
@@ -373,7 +397,7 @@ export class WorldService {
         regionId: p.regionId,
         coord: p.coord,
         size: p.size,
-        visited: dockedPortIds.has(p.id),
+        visited: everVisitedPortIds.has(p.id) || dockedPortIds.has(p.id),
       })),
       npcGuilds: guilds
         .filter((g) => g.kind === "NPC")

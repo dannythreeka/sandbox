@@ -6,6 +6,8 @@ import {
   BALANCE,
   captainNavSpeedBonus,
   consumeSupplies,
+  effectiveBuyPrice,
+  effectiveSellPrice,
   findPath,
   fleetSpeed,
   HEXMAP,
@@ -318,6 +320,7 @@ export class VoyageService {
         arrivals.push({ worldId, payload: { tick: newTick, fleetId: fleet.id, portId: arrivedPortId! } });
         await awardExpToFleetOfficers(this.prisma, fleet.id, BALANCE.OFFICER_EXP_PER_ARRIVAL);
         await awardCaptainExp(this.prisma, fleet.guildId, BALANCE.CAPTAIN_EXP_PER_ARRIVAL);
+        await this.recordPortIntel(worldId, arrivedPortId!, fleet.guildId, newTick);
       }
       if (anchoredAtSea) {
         notices.push(`「${fleet.name}」已抵達目標海域，下錨待命。`);
@@ -348,5 +351,34 @@ export class VoyageService {
       this.events.emit(WORLD_ARRIVAL_EVENT, arrival);
     }
     return tickPayload;
+  }
+
+  /**
+   * 抵達港口當下，把「此刻的有效買賣價」凍結存成該商會對這個港口的已知情報
+   * （M32，市場情報不完全）。停靠期間時間不會前進（docs/01 §核心循環），
+   * 抵達當下 snapshot 一次即可代表這次停靠所知道的全部；下次真的再訪才會更新。
+   */
+  private async recordPortIntel(
+    worldId: string,
+    portId: string,
+    guildId: string,
+    tick: number,
+  ): Promise<void> {
+    const portState = await this.prisma.portState.findUnique({
+      where: { worldId_portId: { worldId, portId } },
+      include: { market: true, influences: true },
+    });
+    if (!portState) return;
+    const share = Number(portState.influences.find((i) => i.guildId === guildId)?.share ?? 0);
+    const market = portState.market.map((m) => ({
+      commodityId: m.commodityId,
+      buyPrice: effectiveBuyPrice(m.price, share),
+      sellPrice: effectiveSellPrice(m.price, share),
+    }));
+    await this.prisma.portIntel.upsert({
+      where: { worldId_portId: { worldId, portId } },
+      create: { worldId, portId, lastVisitedTick: tick, market },
+      update: { lastVisitedTick: tick, market },
+    });
   }
 }

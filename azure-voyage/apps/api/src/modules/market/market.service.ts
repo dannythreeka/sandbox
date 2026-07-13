@@ -91,10 +91,11 @@ export class MarketService {
   }
 
   /**
-   * 貿易路線建議（docs/01 §4.2、M24）：以 portId 為起點，比較全部港口目前的
-   * 有效買/賣價，算出「在起點買、去哪賣」的獲利建議，按「單位獲利/距離」排序。
-   * 只讀當下市場快照，不含 PURSER 職位加成（那是實際下單時才套用的折扣，
-   * 這裡單純是市場情報，維持跟 getPortDetail 一致的簡化）。
+   * 貿易路線建議（docs/01 §4.2、M24；M32 市場情報不完全）：以 portId 為起點，
+   * 起點港讀「即時」市場真相（玩家人就站在這裡）；其餘候選港只用玩家上次實際
+   * 抵達當下留下的舊情報（`PortIntel`）——從沒去過的港口沒有情報列，直接不
+   * 列入候選，不再是全地圖即時全知。不含 PURSER 職位加成（那是下單時才套用
+   * 的折扣，這裡單純是市場情報，維持跟 getPortDetail 一致的簡化）。
    */
   async getTradeRouteSuggestions(
     userId: string,
@@ -106,31 +107,41 @@ export class MarketService {
     if (!world || world.userId !== userId) throw new GameError("NOT_FOUND");
 
     const playerGuild = await this.prisma.guild.findFirstOrThrow({ where: { worldId, kind: "PLAYER" } });
-    // 只取現行 15 港（排除 M21 刪除後留下的孤兒 PortState，見 docs/13 §2）
-    const portStates = await this.prisma.portState.findMany({
-      where: { worldId, portId: { in: [...PORT_IDS] } },
+
+    const originState = await this.prisma.portState.findUnique({
+      where: { worldId_portId: { worldId, portId } },
       include: { market: true, influences: true },
     });
+    if (!originState) throw new GameError("NOT_FOUND");
+    const originPort = portById(originState.portId);
+    const originShare = Number(originState.influences.find((i) => i.guildId === playerGuild.id)?.share ?? 0);
+    const origin: PortMarketSnapshot = {
+      portId: originState.portId,
+      portName: originPort.name,
+      coord: originPort.coord,
+      listings: originState.market.map((m) => ({
+        commodityId: m.commodityId,
+        buyPrice: effectiveBuyPrice(m.price, originShare),
+        sellPrice: effectiveSellPrice(m.price, originShare),
+      })),
+    };
 
-    const snapshots: PortMarketSnapshot[] = portStates.map((ps) => {
-      const port = portById(ps.portId);
-      const share = Number(ps.influences.find((i) => i.guildId === playerGuild.id)?.share ?? 0);
+    // 只取現行 15 港（排除 M21 刪除後留下的孤兒 PortIntel，見 docs/13 §2）
+    const intelRows = await this.prisma.portIntel.findMany({
+      where: { worldId, portId: { in: PORT_IDS.filter((id) => id !== portId) } },
+    });
+    const candidates: PortMarketSnapshot[] = intelRows.map((intel) => {
+      const port = portById(intel.portId);
       return {
-        portId: ps.portId,
+        portId: intel.portId,
         portName: port.name,
         coord: port.coord,
-        listings: ps.market.map((m) => ({
-          commodityId: m.commodityId,
-          buyPrice: effectiveBuyPrice(m.price, share),
-          sellPrice: effectiveSellPrice(m.price, share),
-        })),
+        listings: intel.market as { commodityId: string; buyPrice: number; sellPrice: number }[],
+        intelAgeTicks: world.currentTick - intel.lastVisitedTick,
       };
     });
 
-    const origin = snapshots.find((s) => s.portId === portId);
-    if (!origin) throw new GameError("NOT_FOUND");
-
-    return bestTradeRoutesFrom(origin, snapshots, limit);
+    return bestTradeRoutesFrom(origin, [origin, ...candidates], limit);
   }
 
   /**

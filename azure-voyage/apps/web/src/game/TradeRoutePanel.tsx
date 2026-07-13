@@ -55,6 +55,14 @@ export function TradeRoutePanel({ worldId, portId, onSetRoute }: Props) {
                 {commodityById(s.commodityId).name}：本港買 {s.buyPrice}，運至{" "}
                 <span className="text-foam">{s.sellPortName}</span> 賣 {s.sellPrice}
                 （單位獲利 <span className="text-gold">+{s.profitPerUnit}</span>・距離 {s.distance} 格）
+                <br />
+                <span className="text-xs text-slate-400">
+                  {s.sellIntelAgeTicks === undefined
+                    ? "情報：即時"
+                    : s.sellIntelAgeTicks <= 0
+                      ? "情報：即時（今日）"
+                      : `情報：${s.sellIntelAgeTicks} 天前，實際價格可能已變動`}
+                </span>
               </span>
               <button className="btn-ghost" disabled={busy} onClick={() => goTo(s.sellPortId)}>
                 前往

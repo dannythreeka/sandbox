@@ -11,6 +11,11 @@ export interface PortMarketSnapshot {
   coord: OffsetCoord;
   /** 該港各商品的目前有效買/賣價（已套用影響力折扣） */
   listings: { commodityId: string; buyPrice: number; sellPrice: number }[];
+  /**
+   * 情報時效性（M32，市場情報不完全）：undefined 代表即時真相（玩家目前所在的
+   * 起點港）；數字代表這是「上次實際抵達當下」凍結的舊情報，距今經過幾個 tick。
+   */
+  intelAgeTicks?: number;
 }
 
 export interface TradeRouteSuggestion {
@@ -24,6 +29,8 @@ export interface TradeRouteSuggestion {
   distance: number;
   /** 排序依據：單位獲利 / max(1, 距離)，距離越近、獲利越高分數越高 */
   score: number;
+  /** 賣出港情報的時效性；undefined＝即時（不會發生，賣出港恆為非起點港），見 PortMarketSnapshot#intelAgeTicks */
+  sellIntelAgeTicks?: number;
 }
 
 export function bestTradeRoutesFrom(
@@ -53,6 +60,7 @@ export function bestTradeRoutesFrom(
         profitPerUnit,
         distance,
         score: profitPerUnit / Math.max(1, distance),
+        sellIntelAgeTicks: target.intelAgeTicks,
       });
     }
   }

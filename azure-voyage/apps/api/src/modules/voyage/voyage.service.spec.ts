@@ -126,6 +126,20 @@ function makePrismaMock(state: {
       findMany: jest.fn(async () => [] as { id: string; role: string | null; stats: unknown; exp: number }[]),
       update: jest.fn(),
     },
+    // M32：抵達港口時凍結市場情報（PortIntel）；測試不驗證這裡的內容細節，
+    // 只需要 portState 有市場資料可讀、portIntel.upsert 不會炸掉即可。
+    portState: {
+      findUnique: jest.fn(async () => ({
+        id: "ps1",
+        worldId: "w1",
+        portId: "port.any",
+        market: [{ commodityId: "com.wine", price: 10, stock: 100, baseStock: 100 }],
+        influences: [] as { guildId: string; share: number }[],
+      })),
+    },
+    portIntel: {
+      upsert: jest.fn(async () => ({})),
+    },
     $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)),
   } as unknown as PrismaService;
   return { prisma, guild };
