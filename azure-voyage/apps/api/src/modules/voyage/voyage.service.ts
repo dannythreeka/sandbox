@@ -4,6 +4,7 @@ import { Prisma, type Fleet } from "@prisma/client";
 import {
   axialToOddr,
   BALANCE,
+  captainNavSpeedBonus,
   consumeSupplies,
   findPath,
   fleetSpeed,
@@ -36,6 +37,7 @@ import {
 } from "@azure-voyage/shared";
 import { GameError } from "../../common/errors/game-error";
 import { awardExpToFleetOfficers } from "../officer/officer-growth.util";
+import { awardCaptainExp } from "../officer/captain-growth.util";
 import { PrismaService } from "../../prisma/prisma.service";
 
 export const WORLD_TICK_EVENT = "world.tick";
@@ -212,7 +214,7 @@ export class VoyageService {
     const world = await this.prisma.gameWorld.findUniqueOrThrow({ where: { id: worldId } });
     const sailingFleets = await this.prisma.fleet.findMany({
       where: { worldId, activity: "SAILING" },
-      include: { ships: true, officers: true },
+      include: { ships: true, officers: true, guild: true },
     });
 
     const deltas: FleetTickDelta[] = [];
@@ -230,7 +232,8 @@ export class VoyageService {
       const totalCrew = fleet.ships.reduce((acc, s) => acc + s.crew, 0);
       const navigator = fleet.officers.find((o) => o.role === "NAVIGATOR");
       const navStats = navigator?.stats as { nav: number } | undefined;
-      const navBonus = navigatorSpeedBonus(navStats?.nav);
+      // 提督（艦長）本人的航海值也貢獻航速加成，與航海長職位加成疊加（M27）
+      const navBonus = navigatorSpeedBonus(navStats?.nav) + captainNavSpeedBonus(fleet.guild.captainNav);
       const baseSpeed = fleetSpeed(slowest, navBonus);
       const carryMax = Math.max(baseSpeed, moveCost(TERRAIN.REEF));
 
@@ -314,6 +317,7 @@ export class VoyageService {
       if (arrivedPort) {
         arrivals.push({ worldId, payload: { tick: newTick, fleetId: fleet.id, portId: arrivedPortId! } });
         await awardExpToFleetOfficers(this.prisma, fleet.id, BALANCE.OFFICER_EXP_PER_ARRIVAL);
+        await awardCaptainExp(this.prisma, fleet.guildId, BALANCE.CAPTAIN_EXP_PER_ARRIVAL);
       }
       if (anchoredAtSea) {
         notices.push(`「${fleet.name}」已抵達目標海域，下錨待命。`);

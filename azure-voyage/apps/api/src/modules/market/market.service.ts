@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import {
   BALANCE,
   bestTradeRoutesFrom,
+  captainTradeBonus,
   commodityById,
   computeMarketPrice,
   effectiveBuyPrice,
@@ -22,6 +23,7 @@ import {
 } from "@azure-voyage/shared";
 import { GameError } from "../../common/errors/game-error";
 import { awardExpToFleetOfficers } from "../officer/officer-growth.util";
+import { awardCaptainExp } from "../officer/captain-growth.util";
 import { PrismaService } from "../../prisma/prisma.service";
 
 interface CargoLine {
@@ -161,9 +163,11 @@ export class MarketService {
         where: { portStateId_guildId: { portStateId: portState.id, guildId: guild.id } },
       });
       const share = playerInfluence ? Number(playerInfluence.share) : 0;
-      // 會計長（PURSER）：買賣折扣加成，與影響力折扣疊加（M23）
+      // 會計長（PURSER）＋提督商才（M27）：買賣折扣加成，與影響力折扣疊加
       const purser = fleet.officers.find((o) => o.role === "PURSER");
-      const purserBonus = purserTradeBonus((purser?.stats as unknown as OfficerStats | undefined)?.trade);
+      const purserBonus =
+        purserTradeBonus((purser?.stats as unknown as OfficerStats | undefined)?.trade) +
+        captainTradeBonus(guild.captainTrade);
 
       const shipClass = shipClassById(ship.shipClassId);
       const cargoMap = new Map<string, CargoLine>(
@@ -264,6 +268,7 @@ export class MarketService {
           update: { goodwill: { increment: goodwillDelta } },
         });
         await awardExpToFleetOfficers(tx, fleet.id, BALANCE.OFFICER_EXP_PER_TRADE);
+        await awardCaptainExp(tx, guild.id, BALANCE.CAPTAIN_EXP_PER_TRADE);
       }
 
       return { fills, goldRemaining: gold };

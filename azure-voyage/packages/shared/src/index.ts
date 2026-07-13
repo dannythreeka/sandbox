@@ -9,6 +9,7 @@ export * from "./content/npcGuilds";
 export * from "./content/officersPool";
 export * from "./content/discoveries";
 export * from "./content/portNotables";
+export * from "./content/captainTitles";
 export * from "./content/map/hexmap";
 
 // rules
@@ -29,6 +30,7 @@ export * from "./rules/dominance";
 export * from "./rules/worldgen";
 export * from "./rules/aiFallback";
 export * from "./rules/officerGrowth";
+export * from "./rules/captainGrowth";
 export * from "./rules/tradeRoutes";
 export * from "./rules/narrative";
 

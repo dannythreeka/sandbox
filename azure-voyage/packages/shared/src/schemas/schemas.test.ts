@@ -50,7 +50,18 @@ describe("world schemas", () => {
         updatedAt: new Date().toISOString(),
         seed: 12345,
       },
-      playerGuild: { id: "g1", name: "提督商會", gold: 10000, fame: 0 },
+      playerGuild: {
+        id: "g1",
+        name: "提督商會",
+        gold: 10000,
+        fame: 0,
+        captain: {
+          exp: 0,
+          level: 0,
+          title: "見習船長",
+          stats: { lead: 20, nav: 20, combat: 20, trade: 20, lore: 20 },
+        },
+      },
       fleets: [
         {
           id: "f1",

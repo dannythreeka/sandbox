@@ -78,6 +78,15 @@ model Guild {
   aiStrategy            Json?
   aiStrategyUpdatedTick Int?
 
+  // 玩家商會專用：提督（艦長）個人成長（M27）——玩家角色本人的五維與經驗，
+  // 區別於雇用的 Officer；NPC/在地勢力商會不使用，維持預設值即可。
+  captainExp    Int @default(0)
+  captainLead   Int @default(20)
+  captainNav    Int @default(20)
+  captainCombat Int @default(20)
+  captainTrade  Int @default(20)
+  captainLore   Int @default(20)
+
   fleets     Fleet[]
   influences PortInfluence[]
 

@@ -20,6 +20,7 @@ import {
 import { GameError } from "../../common/errors/game-error";
 import { PrismaService } from "../../prisma/prisma.service";
 import { DiscoveryNarrativeService } from "../ai/discovery-narrative.service";
+import { awardCaptainExp } from "../officer/captain-growth.util";
 
 @Injectable()
 export class DiscoveryService {
@@ -187,6 +188,7 @@ export class DiscoveryService {
         where: { id: guild.id },
         data: { gold: guild.gold + BigInt(def.goldReward), fame: { increment: def.fameReward } },
       });
+      await awardCaptainExp(tx, guild.id, BALANCE.CAPTAIN_EXP_PER_DISCOVERY);
 
       return { goldReward: def.goldReward, fameReward: def.fameReward };
     });

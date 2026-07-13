@@ -142,7 +142,20 @@ describe("WorldService#getSnapshot self-heal for removed port ids", () => {
       },
       guild: {
         findMany: jest.fn(async () => [
-          { id: "g-player", worldId: "w1", kind: "PLAYER", name: "玩家商會", gold: BigInt(1000), fame: 0 },
+          {
+            id: "g-player",
+            worldId: "w1",
+            kind: "PLAYER",
+            name: "玩家商會",
+            gold: BigInt(1000),
+            fame: 0,
+            captainExp: 0,
+            captainLead: 20,
+            captainNav: 20,
+            captainCombat: 20,
+            captainTrade: 20,
+            captainLore: 20,
+          },
         ]),
       },
       fleet: {

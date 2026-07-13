@@ -34,7 +34,16 @@ function makePlayerAboutToLoseUnits() {
 
 function makePrisma(state: BattleState, opts: { gold?: number; status?: string } = {}) {
   const world = { id: "w1", userId: "u1" };
-  const guild = { id: "g1", gold: BigInt(opts.gold ?? 10000) };
+  const guild = {
+    id: "g1",
+    gold: BigInt(opts.gold ?? 10000),
+    captainExp: 0,
+    captainLead: 20,
+    captainNav: 20,
+    captainCombat: 20,
+    captainTrade: 20,
+    captainLore: 20,
+  };
   const fleet = { id: "f1", worldId: "w1", guildId: "g1" };
   const battle = {
     id: "b1",
@@ -76,8 +85,8 @@ function makePrisma(state: BattleState, opts: { gold?: number; status?: string }
     },
     guild: {
       findUniqueOrThrow: jest.fn(async () => guild),
-      update: jest.fn(async ({ data }: { data: { gold: bigint } }) => {
-        guild.gold = data.gold;
+      update: jest.fn(async ({ data }: { data: Partial<typeof guild> }) => {
+        Object.assign(guild, data);
       }),
     },
     officer: {

@@ -1,4 +1,4 @@
-import { BALANCE } from "@azure-voyage/shared";
+import { BALANCE, captainLoyaltyMitigation } from "@azure-voyage/shared";
 import type { PrismaService } from "../../prisma/prisma.service";
 import { OfficerService } from "./officer.service";
 
@@ -21,8 +21,11 @@ interface OfficerRow {
 function makePrisma(officers: OfficerRow[], fleetGold = 10000) {
   const world = { id: "w1", userId: "u1" };
   const fleet = { id: "f1", worldId: "w1", guildId: "g1", activity: "DOCKED", dockedPortId: PORT_ID };
-  const guilds: Record<string, { id: string; gold: bigint; kind: string }> = {
-    g1: { id: "g1", gold: BigInt(fleetGold), kind: "PLAYER" },
+  const guilds: Record<
+    string,
+    { id: string; gold: bigint; kind: string; captainLead: number }
+  > = {
+    g1: { id: "g1", gold: BigInt(fleetGold), kind: "PLAYER", captainLead: 20 },
   };
 
   const prisma = {
@@ -185,7 +188,10 @@ describe("OfficerService.paySalariesIfDue", () => {
 
     await service.paySalariesIfDue("w1", BALANCE.SALARY_INTERVAL_TICKS);
     expect(Number(guilds.g1.gold)).toBe(50); // 沒扣款
-    expect(officers[0].loyalty).toBe(15 - BALANCE.LOYALTY_PENALTY_UNPAID);
+    // 提督統率（預設 20）本身就會減緩一部分懲罰（M27），與副官加成疊加
+    const mitigation = captainLoyaltyMitigation(guilds.g1.captainLead);
+    const expectedPenalty = Math.round(BALANCE.LOYALTY_PENALTY_UNPAID * (1 - mitigation));
+    expect(officers[0].loyalty).toBe(15 - expectedPenalty);
   });
 
   it("a first mate softens the unpaid loyalty penalty for the whole fleet (M23)", async () => {
