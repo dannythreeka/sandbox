@@ -771,29 +771,29 @@ export function SeaMap({
   }, [routeWaypoints]);
 
   return (
-    <div className="relative">
+    <div className="map-stage">
       <div
         ref={hostRef}
-        className="h-[520px] w-full overflow-hidden rounded-md border border-foam/20 md:h-[60vh]"
+        className="h-[480px] w-full overflow-hidden md:h-[64vh] md:min-h-[560px]"
       />
       <button
         className={
           follow
-            ? "absolute right-2 top-2 rounded bg-gold/90 px-2 py-1 text-xs font-medium text-abyss"
-            : "absolute right-2 top-2 rounded bg-slate-800/85 px-2 py-1 text-xs text-slate-200 hover:bg-slate-700/85"
+            ? "absolute right-3 top-3 rounded border border-gold/80 bg-gold/90 px-2 py-1 text-xs font-medium text-abyss"
+            : "absolute right-3 top-3 rounded border border-foam/25 bg-slate-900/90 px-2 py-1 text-xs text-slate-200 hover:bg-slate-700/85"
         }
         onClick={() => setFollowBoth(!followRef.current)}
       >
         {follow ? "鏡頭跟隨中" : "回到艦隊"}
       </button>
       <button
-        className="absolute left-2 top-2 rounded bg-slate-800/85 px-2 py-1 text-xs text-slate-200 hover:bg-slate-700/85"
+        className="absolute left-3 top-10 rounded border border-foam/20 bg-slate-900/90 px-2 py-1 text-xs text-slate-200 hover:bg-slate-700/85"
         onClick={toggleEffects}
         title="關閉／開啟波光、風紋、霧、風暴等天氣視覺效果"
       >
         {effectsEnabled ? "天氣特效：開" : "天氣特效：關"}
       </button>
-      <span className="pointer-events-none absolute bottom-2 left-2 rounded bg-slate-900/70 px-2 py-1 text-xs text-slate-300">
+      <span className="pointer-events-none absolute bottom-3 left-3 rounded border border-foam/15 bg-slate-950/80 px-2 py-1 text-xs text-slate-300">
         點港口或海面設定航向 · 拖曳平移 · 滾輪縮放
       </span>
     </div>

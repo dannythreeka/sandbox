@@ -31,8 +31,11 @@ export function FleetOverviewPanel({ fleet }: Props) {
     .sort((a, b) => b.quantity - a.quantity);
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-lg font-semibold text-foam">艦隊總覽</h3>
+    <div className="space-y-4">
+      <div>
+        <p className="section-kicker">Fleet Manifest</p>
+        <h3 className="text-lg font-semibold text-foam">艦隊總覽</h3>
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <h4 className="mb-1 text-sm font-medium text-slate-300">貨艙（跨船彙總）</h4>
@@ -41,7 +44,7 @@ export function FleetOverviewPanel({ fleet }: Props) {
           ) : (
             <ul className="space-y-1 text-sm">
               {cargoRows.map((r) => (
-                <li key={r.commodityId} className="flex justify-between">
+                <li key={r.commodityId} className="data-row flex justify-between px-3 py-2">
                   <span className="text-slate-300">{r.name}</span>
                   <span className="font-mono">
                     <span className="text-gold">{r.quantity}</span>
@@ -59,7 +62,7 @@ export function FleetOverviewPanel({ fleet }: Props) {
               const cls = shipClassById(s.shipClassId);
               const cargoUsed = s.cargo.reduce((sum, c) => sum + c.quantity, 0);
               return (
-                <li key={s.id} className="flex justify-between text-slate-300">
+                <li key={s.id} className="data-row flex justify-between px-3 py-2 text-slate-300">
                   <span>
                     {s.isFlagship ? "⚓ " : ""}
                     {s.name}
@@ -77,7 +80,7 @@ export function FleetOverviewPanel({ fleet }: Props) {
           ) : (
             <ul className="space-y-1 text-sm text-slate-300">
               {fleet.officers.map((o) => (
-                <li key={o.id} className="flex justify-between">
+                <li key={o.id} className="data-row flex justify-between px-3 py-2">
                   <span>{o.name}</span>
                   <span className="text-xs text-slate-400">{o.role ?? "未指派"}</span>
                 </li>
