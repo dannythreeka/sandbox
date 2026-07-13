@@ -210,7 +210,7 @@ export class PersonaService {
     name: string,
     portName: string,
     archetype: PortNotableArchetype,
-    seed: number,
+    _seed: number,
   ): Promise<NpcPersonaGen> {
     const fallback = () => fallbackPortNotablePersonaGen({ name, portName, archetype });
 
