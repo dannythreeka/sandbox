@@ -42,6 +42,7 @@ function worldRow(overrides: Partial<GameWorld> = {}): GameWorld {
     seed: 42,
     currentTick: 0,
     status: "ACTIVE",
+    questChapter: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

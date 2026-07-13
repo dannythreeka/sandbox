@@ -42,6 +42,10 @@ model GameWorld {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
+  // 主線任務進度（M28）：目前正在進行 QUEST_CHAPTERS[questChapter]；
+  // 等於陣列長度時代表全部完成。條件判定全走既有可查詢狀態，這裡只存進度指標。
+  questChapter Int @default(0)
+
   guilds       Guild[]
   fleets       Fleet[]
   officers     Officer[]

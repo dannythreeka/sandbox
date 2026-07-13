@@ -8,12 +8,14 @@ import {
   CONTENT_VERSION,
   PORT_NOTABLE_TEMPLATES,
   PORTS,
+  QUEST_CHAPTERS,
   regionsDominatedBy,
   RELIC_DISCOVERY_IDS,
   resolvePortId,
   shipClassById,
   WorldSnapshotSchema,
   type CreateWorldInput,
+  type QuestProgressView,
   type WorldPlan,
   type WorldSnapshot,
   type WorldSummary,
@@ -388,6 +390,7 @@ export class WorldService {
         relicsFound,
         totalAssets: Number(playerGuild.gold) + shipValue,
       },
+      quest: buildQuestProgressView(world.questChapter),
     };
     // 驗收要求：快照必須通過 shared zod schema（docs/09 M1）
     return WorldSnapshotSchema.parse(snapshot);
@@ -423,4 +426,16 @@ export class WorldService {
       updatedAt: world.updatedAt.toISOString(),
     };
   }
+}
+
+/** 主線任務進度快照（M28）：questChapter 等於陣列長度即代表全部完成。 */
+function buildQuestProgressView(questChapter: number): QuestProgressView {
+  const completed = questChapter >= QUEST_CHAPTERS.length;
+  const chapter = completed ? null : QUEST_CHAPTERS[questChapter];
+  return {
+    chapterIndex: questChapter,
+    totalChapters: QUEST_CHAPTERS.length,
+    completed,
+    currentChapter: chapter ? { id: chapter.id, title: chapter.title, objective: chapter.objective } : null,
+  };
 }

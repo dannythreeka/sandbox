@@ -29,6 +29,7 @@ import {
   type ServerBattleUpdatePayload,
   type ServerEventPayload,
   type ServerJoinedPayload,
+  type ServerQuestChapterPayload,
   type ServerResyncPayload,
   type ServerTickPayload,
   type ServerVictoryPayload,
@@ -50,6 +51,7 @@ import { DiscoveryCodexPanel } from "@/game/DiscoveryCodexPanel";
 import { CaptainPanel } from "@/game/CaptainPanel";
 import { InfluencePanel } from "@/game/InfluencePanel";
 import { PortCutscene, type CutsceneState } from "@/game/PortCutscene";
+import { QuestChapterCutscene } from "@/game/QuestChapterCutscene";
 import { GameArt } from "@/game/GameArt";
 import { PortBanner } from "@/game/PortBanner";
 
@@ -138,6 +140,7 @@ export default function PlayPage() {
   const [cutscene, setCutscene] = useState<CutsceneState | null>(null);
   const [codexOpen, setCodexOpen] = useState(false);
   const [captainOpen, setCaptainOpen] = useState(false);
+  const [questCutscene, setQuestCutscene] = useState<ServerQuestChapterPayload | null>(null);
   const [openingNarrative, setOpeningNarrative] = useState<string | null>(null);
   // M14：每次遞增觸發一次海圖的全屏閃光＋震動（風暴事件實際觸發時）
   const [stormFlashTrigger, setStormFlashTrigger] = useState(0);
@@ -272,6 +275,10 @@ export default function PlayPage() {
     });
     socket.on(WS_EVENTS.SERVER_VICTORY, (payload: ServerVictoryPayload) => {
       setVictory(payload);
+    });
+    socket.on(WS_EVENTS.SERVER_QUEST_CHAPTER, (payload: ServerQuestChapterPayload) => {
+      setQuestCutscene(payload);
+      api.getWorld(worldId).then(setSnapshot).catch(() => undefined);
     });
     socket.on(WS_EVENTS.SERVER_ERROR, (err: { message: string }) => {
       inFlightRef.current = false;
@@ -727,9 +734,28 @@ export default function PlayPage() {
             </div>
           </section>
 
+          <section className="panel py-2 text-sm text-slate-300">
+            {snapshot.quest.completed ? (
+              <span className="text-gold">主線．全部章節已完成——你的名字已寫進蒼瀾海域的史冊。</span>
+            ) : (
+              snapshot.quest.currentChapter && (
+                <span>
+                  <span className="text-gold">
+                    主線．第 {snapshot.quest.chapterIndex + 1}/{snapshot.quest.totalChapters} 章：
+                    {snapshot.quest.currentChapter.title}
+                  </span>{" "}
+                  — {snapshot.quest.currentChapter.objective}
+                </span>
+              )
+            )}
+          </section>
+
           {codexOpen && <DiscoveryCodexPanel worldId={worldId} onClose={() => setCodexOpen(false)} />}
           {captainOpen && (
             <CaptainPanel captain={snapshot.playerGuild.captain} onClose={() => setCaptainOpen(false)} />
+          )}
+          {questCutscene && (
+            <QuestChapterCutscene payload={questCutscene} onDone={() => setQuestCutscene(null)} />
           )}
 
           <SeaMap

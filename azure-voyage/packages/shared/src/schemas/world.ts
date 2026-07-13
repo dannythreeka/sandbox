@@ -125,6 +125,21 @@ export const CaptainViewSchema = z.object({
 });
 export type CaptainView = z.infer<typeof CaptainViewSchema>;
 
+/** 主線任務進度（M28）：目前所在章節（未完成則為該章內容，全部完成則為 null）。 */
+export const QuestProgressViewSchema = z.object({
+  chapterIndex: z.number().int(),
+  totalChapters: z.number().int(),
+  completed: z.boolean(),
+  currentChapter: z
+    .object({
+      id: z.string(),
+      title: z.string(),
+      objective: z.string(),
+    })
+    .nullable(),
+});
+export type QuestProgressView = z.infer<typeof QuestProgressViewSchema>;
+
 export const WorldSnapshotSchema = z.object({
   world: WorldSummarySchema.extend({ seed: z.number().int() }),
   playerGuild: z.object({
@@ -137,6 +152,7 @@ export const WorldSnapshotSchema = z.object({
   fleets: z.array(FleetViewSchema),
   knownPorts: z.array(PortSummarySchema),
   npcGuilds: z.array(NpcGuildPublicViewSchema),
+  quest: QuestProgressViewSchema,
   victoryProgress: z.object({
     regionsDominated: z.number().int(),
     relicsFound: z.number().int(),

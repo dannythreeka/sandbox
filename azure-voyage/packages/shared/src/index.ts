@@ -10,6 +10,7 @@ export * from "./content/officersPool";
 export * from "./content/discoveries";
 export * from "./content/portNotables";
 export * from "./content/captainTitles";
+export * from "./content/questChapters";
 export * from "./content/map/hexmap";
 
 // rules

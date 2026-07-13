@@ -7,6 +7,7 @@ import { InfluenceModule } from "../influence/influence.module";
 import { MarketModule } from "../market/market.module";
 import { NpcModule } from "../npc/npc.module";
 import { OfficerModule } from "../officer/officer.module";
+import { QuestModule } from "../quest/quest.module";
 import { VictoryModule } from "../victory/victory.module";
 import { VoyageModule } from "../voyage/voyage.module";
 import { WorldModule } from "../world/world.module";
@@ -25,6 +26,7 @@ import { WORLD_TICK_QUEUE, WorldTickProcessor } from "./world-tick.processor";
     InfluenceModule,
     NpcModule,
     VictoryModule,
+    QuestModule,
     AiModule,
   ],
   providers: [ClockService, WorldTickProcessor],
