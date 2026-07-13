@@ -279,6 +279,21 @@ export default function PlayPage() {
     };
   }, [worldId, router]);
 
+  // bug 修復：重新連線／重新整理時，若艦隊其實還卡在一場進行中的海戰裡
+  // （沒收到當初那次 SERVER_BATTLE_START 推播），主動把戰鬥畫面接回來，
+  // 而不是讓玩家看到正常海圖卻永遠無法動彈。
+  useEffect(() => {
+    const activeBattleId = snapshot?.fleets[0]?.activeBattleId;
+    if (!activeBattleId || battleId) return;
+    api
+      .getBattle(worldId, activeBattleId)
+      .then((battle) => {
+        setBattleId(battle.id);
+        setBattleState(battle.state);
+      })
+      .catch(() => undefined);
+  }, [snapshot, worldId, battleId]);
+
   const fleet = snapshot?.fleets[0];
   playerFleetIdRef.current = fleet?.id ?? playerFleetIdRef.current;
   const activity = fleetDelta?.activity ?? fleet?.activity;

@@ -85,6 +85,8 @@ export const FleetViewSchema = z.object({
   morale: z.number().int(),
   ships: z.array(ShipViewSchema),
   officers: z.array(OfficerViewSchema),
+  /** activity 為 IN_BATTLE 時，這場進行中海戰的 id（bug 修復：讓重新連線的前端能接回戰鬥畫面） */
+  activeBattleId: z.string().nullable(),
 });
 export type FleetView = z.infer<typeof FleetViewSchema>;
 

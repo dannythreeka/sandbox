@@ -127,7 +127,11 @@ describe("WorldService", () => {
 // M21 縮編後既有存檔可能還有艦隊/待業航海士停在已刪除的港口 id（如 port.amber_gulf.vireno）；
 // getSnapshot() 讀取時要自我修復成最近的存續港口，而不是讓 portById() 崩潰。
 describe("WorldService#getSnapshot self-heal for removed port ids", () => {
-  function makeSnapshotPrismaMock(fleet: FleetRow, tavernOfficers: OfficerRow[]) {
+  function makeSnapshotPrismaMock(
+    fleet: FleetRow,
+    tavernOfficers: OfficerRow[],
+    battles: { id: string; fleetId: string }[] = [],
+  ) {
     const fleets = [fleet];
     const officers = [...tavernOfficers];
     const prisma = {
@@ -159,6 +163,7 @@ describe("WorldService#getSnapshot self-heal for removed port ids", () => {
       },
       portInfluence: { findMany: jest.fn(async () => []) },
       discoveryRecord: { count: jest.fn(async () => 0) },
+      battle: { findMany: jest.fn(async () => battles) },
       $transaction: jest.fn(async (arg: unknown) => {
         if (typeof arg === "function") return arg(prisma);
         return Promise.all(arg as Promise<unknown>[]);
@@ -249,5 +254,51 @@ describe("WorldService#getSnapshot self-heal for removed port ids", () => {
 
     expect(snapshot.fleets[0].dockedPortId).toBe("port.amber_gulf.aurelia");
     expect(prisma.fleet.update).not.toHaveBeenCalled();
+  });
+
+  // bug 修復：重新連線時要能知道艦隊卡在哪一場進行中的海戰裡，前端才能接回戰鬥畫面
+  // 而不是永遠卡在 IN_BATTLE 卻看不到任何戰鬥介面。
+  it("surfaces activeBattleId when the fleet is in an ongoing battle", async () => {
+    const fleet: FleetRow = {
+      id: "f1",
+      worldId: "w1",
+      guildId: "g-player",
+      name: "第一艦隊",
+      activity: "IN_BATTLE",
+      posQ: 0,
+      posR: 0,
+      dockedPortId: null,
+      food: 10,
+      water: 10,
+      morale: 100,
+    };
+    const { prisma } = makeSnapshotPrismaMock(fleet, [], [{ id: "battle1", fleetId: "f1" }]);
+    const service = new WorldService(prisma);
+
+    const snapshot = await service.getSnapshot("u1", "w1");
+
+    expect(snapshot.fleets[0].activeBattleId).toBe("battle1");
+  });
+
+  it("leaves activeBattleId null when there is no ongoing battle for the fleet", async () => {
+    const fleet: FleetRow = {
+      id: "f1",
+      worldId: "w1",
+      guildId: "g-player",
+      name: "第一艦隊",
+      activity: "DOCKED",
+      posQ: 0,
+      posR: 0,
+      dockedPortId: "port.amber_gulf.aurelia",
+      food: 10,
+      water: 10,
+      morale: 100,
+    };
+    const { prisma } = makeSnapshotPrismaMock(fleet, []);
+    const service = new WorldService(prisma);
+
+    const snapshot = await service.getSnapshot("u1", "w1");
+
+    expect(snapshot.fleets[0].activeBattleId).toBeNull();
   });
 });

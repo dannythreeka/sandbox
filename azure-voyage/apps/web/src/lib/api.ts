@@ -5,6 +5,7 @@ import {
   type ApiResponse,
   type AuthResult,
   type AuthTokens,
+  type BattleView,
   type CreateWorldInput,
   type DialogueRequest,
   type DialogueResponse,
@@ -107,6 +108,8 @@ export const api = {
     request<WorldSummary>("/worlds", { method: "POST", body: input }),
   getWorld: (id: string) => request<WorldSnapshot>(`/worlds/${id}`),
   abandonWorld: (id: string) => request<WorldSummary>(`/worlds/${id}`, { method: "DELETE" }),
+  getBattle: (worldId: string, battleId: string) =>
+    request<BattleView>(`/worlds/${worldId}/battles/${battleId}`),
   setRoute: (
     worldId: string,
     fleetId: string,

@@ -86,6 +86,7 @@ describe("world schemas", () => {
               exp: 0,
             },
           ],
+          activeBattleId: null,
         },
       ],
       knownPorts: [
