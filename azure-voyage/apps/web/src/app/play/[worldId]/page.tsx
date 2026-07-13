@@ -10,6 +10,7 @@ import {
   ERROR_MESSAGES_ZH_TW,
   firstNavigableHeading,
   HEXMAP,
+  openingNarrativeFor,
   portById,
   regionForCoord,
   seasonAtTick,
@@ -58,6 +59,16 @@ function cutscenesSkipped(): boolean {
 }
 function skipCutscenesForever(): void {
   window.localStorage.setItem(CUTSCENE_SKIP_KEY, "1");
+}
+
+/** M26：世界開篇敘事只在剛開局的頭幾天顯示一次，關閉後記在這個世界自己的 key。 */
+const OPENING_SEEN_PREFIX = "azure-voyage:opening-seen:";
+function openingSeen(worldId: string): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(OPENING_SEEN_PREFIX + worldId) === "1";
+}
+function markOpeningSeen(worldId: string): void {
+  window.localStorage.setItem(OPENING_SEEN_PREFIX + worldId, "1");
 }
 
 type WsState = "connecting" | "joined" | "disconnected";
@@ -124,6 +135,7 @@ export default function PlayPage() {
   const [victory, setVictory] = useState<ServerVictoryPayload | null>(null);
   const [cutscene, setCutscene] = useState<CutsceneState | null>(null);
   const [codexOpen, setCodexOpen] = useState(false);
+  const [openingNarrative, setOpeningNarrative] = useState<string | null>(null);
   // M14：每次遞增觸發一次海圖的全屏閃光＋震動（風暴事件實際觸發時）
   const [stormFlashTrigger, setStormFlashTrigger] = useState(0);
   const socketRef = useRef<Socket | null>(null);
@@ -147,7 +159,13 @@ export default function PlayPage() {
 
     api
       .getWorld(worldId)
-      .then(setSnapshot)
+      .then((snap) => {
+        setSnapshot(snap);
+        // M26：只在剛開局（頭兩天內）且這台裝置沒關過這個世界的開篇時顯示一次
+        if (snap.world.currentTick <= 1 && !openingSeen(worldId)) {
+          setOpeningNarrative(openingNarrativeFor(snap.world.seed));
+        }
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : "載入世界失敗"));
 
     const socket = createGameSocket();
@@ -591,6 +609,21 @@ export default function PlayPage() {
         </p>
       )}
 
+      {openingNarrative && (
+        <section className="panel border border-gold/40 bg-gold/5">
+          <p className="text-sm italic leading-relaxed text-slate-300">{openingNarrative}</p>
+          <button
+            className="btn-ghost mt-2"
+            onClick={() => {
+              markOpeningSeen(worldId);
+              setOpeningNarrative(null);
+            }}
+          >
+            啟航
+          </button>
+        </section>
+      )}
+
       {gameEnded && (
         <section className="panel border-2 border-gold bg-gold/10 text-center">
           <h2 className="text-2xl font-bold text-gold">
@@ -624,7 +657,7 @@ export default function PlayPage() {
             <div className="flex flex-wrap items-center gap-4 text-sm text-slate-300">
               {region && windDir !== null && (
                 <span className="flex items-center gap-1.5">
-                  <span className="text-foam">{region.name}</span>
+                  <span className="text-foam" title={region.description}>{region.name}</span>
                   <span>{SEASON_LABELS[seasonAtTick(currentTick)]}季</span>
                   <span
                     className="inline-block font-bold text-gold"

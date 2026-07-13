@@ -68,6 +68,8 @@ export const PortDetailSchema = z.object({
   name: z.string(),
   regionId: z.string(),
   size: z.number().int(),
+  /** 原創歷史氛圍簡介（M26） */
+  description: z.string(),
   prosperity: z.number().int(),
   market: z.array(MarketListingSchema),
   influences: z.array(PortInfluenceViewSchema),
