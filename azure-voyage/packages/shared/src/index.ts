@@ -30,6 +30,7 @@ export * from "./rules/worldgen";
 export * from "./rules/aiFallback";
 export * from "./rules/officerGrowth";
 export * from "./rules/tradeRoutes";
+export * from "./rules/narrative";
 
 // schemas & errors
 export * from "./errors";

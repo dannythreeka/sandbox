@@ -60,6 +60,7 @@ export class MarketService {
       name: port.name,
       regionId: port.regionId,
       size: port.size,
+      description: port.description,
       prosperity: portState.prosperity,
       market: portState.market.map((m) => ({
         commodityId: m.commodityId,

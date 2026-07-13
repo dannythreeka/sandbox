@@ -75,6 +75,7 @@ export function TradePanel({ worldId, portId, fleetId, shipId, onTraded }: Trade
           我方影響力 {detail.playerShare.toFixed(1)}%
         </span>
       </div>
+      <p className="text-xs italic text-slate-500">{detail.description}</p>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
