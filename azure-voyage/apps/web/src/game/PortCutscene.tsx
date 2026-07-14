@@ -101,7 +101,7 @@ export function PortCutscene({ state, onDone, onSkipForever }: PortCutsceneProps
         ))}
       </svg>
 
-      {/* 動態海浪層：雙份路徑寬度以實現無縫循環 */}
+      {/* 動態海浪層：雙份路徑寬度以實現無縫循環；<use> 複用同一段波形避免重複 */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 overflow-hidden opacity-50">
         <svg
           viewBox="0 0 1200 48"
@@ -110,27 +110,21 @@ export function PortCutscene({ state, onDone, onSkipForever }: PortCutsceneProps
           preserveAspectRatio="none"
           aria-hidden="true"
         >
-          <path
-            d="M0,24 C100,8 200,40 300,24 C400,8 500,40 600,24 C700,8 800,40 900,24 C1000,8 1100,40 1200,24 L1200,48 L0,48Z"
-            fill="#12283f"
-            opacity="0.8"
-          />
-          <path
-            d="M600,28 C700,12 800,44 900,28 C1000,12 1100,44 1200,28 L1200,48 L600,48Z"
-            fill="#0b1526"
-            opacity="0.6"
-          />
-          {/* 鏡像段以形成無縫循環 */}
-          <path
-            d="M1200,24 C1300,8 1400,40 1500,24 C1600,8 1700,40 1800,24 C1900,8 2000,40 2100,24 C2200,8 2300,40 2400,24 L2400,48 L1200,48Z"
-            fill="#12283f"
-            opacity="0.8"
-          />
-          <path
-            d="M1800,28 C1900,12 2000,44 2100,28 C2200,12 2300,44 2400,28 L2400,48 L1800,48Z"
-            fill="#0b1526"
-            opacity="0.6"
-          />
+          <defs>
+            <path
+              id="wave-primary"
+              d="M0,24 C100,8 200,40 300,24 C400,8 500,40 600,24 C700,8 800,40 900,24 C1000,8 1100,40 1200,24 L1200,48 L0,48Z"
+            />
+            <path
+              id="wave-secondary"
+              d="M0,28 C100,12 200,44 300,28 C400,12 500,44 600,28 L600,48 L0,48Z"
+            />
+          </defs>
+          <use href="#wave-primary" fill="#12283f" opacity="0.8" />
+          <use href="#wave-secondary" fill="#0b1526" opacity="0.6" />
+          {/* 鏡像段以形成無縫循環，偏移 1200px */}
+          <use href="#wave-primary" fill="#12283f" opacity="0.8" transform="translate(1200,0)" />
+          <use href="#wave-secondary" fill="#0b1526" opacity="0.6" transform="translate(1200,0)" />
         </svg>
       </div>
 

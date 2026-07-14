@@ -228,7 +228,7 @@
   }
 }
 
-/* 船隻於海浪上的緩慢搖晃 */
+/* 船隻於海浪上的緩慢搖晃；500ms delay 與出港動畫同步，待船出現後才開始搖晃 */
 @keyframes ship-bob {
   0%, 100% { transform: translateY(0) rotate(-0.8deg); }
   50%       { transform: translateY(-4px) rotate(0.8deg); }
@@ -283,8 +283,7 @@
 .cutscene-ship-depart {
   animation:
     cutscene-ship-depart 1800ms ease-in forwards,
-    ship-bob 1.8s ease-in-out infinite;
-  animation-delay: 500ms, 0ms;
+    ship-bob 1.8s ease-in-out 500ms infinite;
 }
 
 .cutscene-ship-arrive {
@@ -319,6 +318,10 @@
   );
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
+}
+
+.quest-kicker {
+  animation: quest-text-enter 500ms ease-out forwards;
 }
 
 .quest-title {

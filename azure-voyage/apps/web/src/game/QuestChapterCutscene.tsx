@@ -37,7 +37,7 @@ export function QuestChapterCutscene({ payload, onDone }: Props) {
         跳過（ESC）
       </button>
 
-      <p className="quest-text text-sm uppercase tracking-widest text-gold/70" style={{ animationDelay: "0ms", animationDuration: "500ms" }}>
+      <p className="quest-kicker text-sm uppercase tracking-widest text-gold/70">
         主線任務完成
       </p>
 
