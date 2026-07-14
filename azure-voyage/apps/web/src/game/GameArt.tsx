@@ -48,7 +48,7 @@ export function GameArt({ category, id, alt, className, fallback }: GameArtProps
     // 一般 <img>（而非 next/image）：資產是可缺席的靜態檔案，需要 onError fallback
     // 語意，且不想為每張圖配置 next/image 的尺寸最佳化管線。
     // shimmer 與 img 疊在同一個 relative 容器內，避免載入前後產生版面位移。
-    <span className={"relative inline-block " + (className ?? "")}>
+    <span className={`relative inline-block ${className ?? ""}`}>
       {/* shimmer 骨架：填滿父容器，直到圖片載入完成才消失 */}
       {!loaded && (
         <span
@@ -60,7 +60,7 @@ export function GameArt({ category, id, alt, className, fallback }: GameArtProps
         ref={imgRef}
         src={`/art/${key}.webp`}
         alt={alt}
-        className={"block h-full w-full object-cover " + (loaded ? "art-loaded" : "opacity-0")}
+        className={`block h-full w-full object-cover ${loaded ? "art-loaded" : "opacity-0"}`}
         onLoad={() => setLoaded(true)}
         onError={() => {
           missing.add(key);

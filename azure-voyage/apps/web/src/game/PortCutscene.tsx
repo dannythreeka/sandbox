@@ -56,14 +56,15 @@ export function PortCutscene({ state, onDone, onSkipForever }: PortCutsceneProps
         跳過（ESC）
       </button>
 
-      {/* 海鷗（SVG 路徑，比 ⌃ 符號更接近真實海鷗剪影） */}
+      {/* 海鷗（SVG 路徑，比 ⌃ 符號更接近真實海鷗剪影；共用 defs 避免路徑重複） */}
       <div className="pointer-events-none absolute inset-x-0 top-12 h-10">
-        <svg
-          viewBox="0 0 32 12"
-          className="cutscene-gull absolute h-5 w-8 fill-foam/60"
-          aria-hidden="true"
-        >
-          <path d="M16,6 Q10,2 0,4 Q8,4 16,6 Q24,4 32,4 Q22,2 16,6Z" />
+        <svg aria-hidden="true" style={{ position: "absolute", width: 0, height: 0 }}>
+          <defs>
+            <path id="gull" d="M16,6 Q10,2 0,4 Q8,4 16,6 Q24,4 32,4 Q22,2 16,6Z" />
+          </defs>
+        </svg>
+        <svg viewBox="0 0 32 12" className="cutscene-gull absolute h-5 w-8 fill-foam/60" aria-hidden="true">
+          <use href="#gull" />
         </svg>
         <svg
           viewBox="0 0 32 12"
@@ -71,7 +72,7 @@ export function PortCutscene({ state, onDone, onSkipForever }: PortCutsceneProps
           aria-hidden="true"
           style={{ animationDelay: "1.1s" }}
         >
-          <path d="M16,6 Q10,2 0,4 Q8,4 16,6 Q24,4 32,4 Q22,2 16,6Z" />
+          <use href="#gull" />
         </svg>
         <svg
           viewBox="0 0 32 12"
@@ -79,7 +80,7 @@ export function PortCutscene({ state, onDone, onSkipForever }: PortCutsceneProps
           aria-hidden="true"
           style={{ animationDelay: "2.3s", animationDuration: "4.8s" }}
         >
-          <path d="M16,6 Q10,2 0,4 Q8,4 16,6 Q24,4 32,4 Q22,2 16,6Z" />
+          <use href="#gull" />
         </svg>
       </div>
 

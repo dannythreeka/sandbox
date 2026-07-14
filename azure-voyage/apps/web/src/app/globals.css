@@ -325,6 +325,9 @@
 }
 
 .quest-title {
+  /* gold-pulse 的 700ms delay 與 quest-title-enter 的持續時間對齊，
+     確保光暈在標題到位後才開始脈動。若調整 quest-title-enter 的 duration，
+     請同步更新這裡的 delay 值。 */
   animation: quest-title-enter 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards,
              gold-pulse 2.4s ease-in-out 700ms infinite;
 }
