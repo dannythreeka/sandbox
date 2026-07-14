@@ -6,6 +6,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
  * 資產管線的前端端點（docs/11 §3）：嘗試載入 `public/art/<category>/<id>.webp`，
  * 不存在或載入失敗時渲染 fallback（程式繪製版）。缺任何一張圖遊戲照常可玩——
  * 美術資產是漸進增強，不是硬相依。
+ *
+ * 視覺增強：載入中顯示 shimmer 骨架，成功後以 art-reveal 動畫淡入，
+ * 避免圖片突兀出現或頁面在等待期間留白。
  */
 
 /** 已知缺檔快取：同一張缺圖只嘗試一次，重渲染不再打 404。 */
@@ -22,6 +25,7 @@ export interface GameArtProps {
 export function GameArt({ category, id, alt, className, fallback }: GameArtProps) {
   const key = `${category}/${id}`;
   const [failed, setFailed] = useState(missing.has(key));
+  const [loaded, setLoaded] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   // 靜態預渲染頁（如登入/註冊）在瀏覽器解析 HTML 當下就會開始載入 <img>，
@@ -30,9 +34,12 @@ export function GameArt({ category, id, alt, className, fallback }: GameArtProps
   // 補上這個 race condition 的判斷，而不是只依賴 onError。
   useEffect(() => {
     const img = imgRef.current;
-    if (img && img.complete && img.naturalWidth === 0) {
+    if (!img) return;
+    if (img.complete && img.naturalWidth === 0) {
       missing.add(key);
       setFailed(true);
+    } else if (img.complete && img.naturalWidth > 0) {
+      setLoaded(true);
     }
   }, [key]);
 
@@ -40,15 +47,25 @@ export function GameArt({ category, id, alt, className, fallback }: GameArtProps
   return (
     // 一般 <img>（而非 next/image）：資產是可缺席的靜態檔案，需要 onError fallback
     // 語意，且不想為每張圖配置 next/image 的尺寸最佳化管線。
-    <img
-      ref={imgRef}
-      src={`/art/${key}.webp`}
-      alt={alt}
-      className={className}
-      onError={() => {
-        missing.add(key);
-        setFailed(true);
-      }}
-    />
+    <>
+      {/* shimmer 骨架：在圖片還未完成載入時疊在同一位置顯示 */}
+      {!loaded && (
+        <span
+          aria-hidden="true"
+          className={"art-shimmer rounded " + (className ?? "")}
+        />
+      )}
+      <img
+        ref={imgRef}
+        src={`/art/${key}.webp`}
+        alt={alt}
+        className={(loaded ? "art-loaded " : "opacity-0 ") + (className ?? "")}
+        onLoad={() => setLoaded(true)}
+        onError={() => {
+          missing.add(key);
+          setFailed(true);
+        }}
+      />
+    </>
   );
 }

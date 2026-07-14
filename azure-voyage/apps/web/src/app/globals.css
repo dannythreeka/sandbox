@@ -228,19 +228,115 @@
   }
 }
 
+/* 船隻於海浪上的緩慢搖晃 */
+@keyframes ship-bob {
+  0%, 100% { transform: translateY(0) rotate(-0.8deg); }
+  50%       { transform: translateY(-4px) rotate(0.8deg); }
+}
+
+/* 水平滾動的海浪層（無縫循環：SVG 寬度為容器 2 倍） */
+@keyframes wave-flow {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* GameArt 圖片載入完成後淡入（避免圖片突兀出現） */
+@keyframes art-reveal {
+  from { opacity: 0; transform: scale(1.03); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* 骨架屏 shimmer（圖片未載入前的等待狀態） */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* 任務章節過場：標題由下滑入 */
+@keyframes quest-title-enter {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* 任務章節過場：子文字淡入 */
+@keyframes quest-text-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 任務完成標題：金色光暈脈動 */
+@keyframes gold-pulse {
+  0%, 100% { text-shadow: 0 0 6px rgba(217,164,65,0.3), 0 0 18px rgba(217,164,65,0); }
+  50%      { text-shadow: 0 0 14px rgba(217,164,65,0.7), 0 0 40px rgba(217,164,65,0.25); }
+}
+
+/* 黃金分隔線橫向展開 */
+@keyframes rule-expand {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
 .cutscene-overlay {
   animation: cutscene-fade-in 400ms ease-out;
 }
 
 .cutscene-ship-depart {
-  animation: cutscene-ship-depart 1800ms ease-in forwards;
-  animation-delay: 500ms;
+  animation:
+    cutscene-ship-depart 1800ms ease-in forwards,
+    ship-bob 1.8s ease-in-out infinite;
+  animation-delay: 500ms, 0ms;
 }
 
 .cutscene-ship-arrive {
-  animation: cutscene-ship-arrive 1500ms ease-out forwards;
+  animation:
+    cutscene-ship-arrive 1500ms ease-out forwards,
+    ship-bob 2.4s ease-in-out infinite;
+}
+
+/* 停靠於港口、不做位移時的靜態搖晃 */
+.cutscene-ship-idle {
+  animation: ship-bob 2.8s ease-in-out infinite;
 }
 
 .cutscene-gull {
   animation: cutscene-gull 3.2s linear infinite;
+}
+
+.cutscene-wave {
+  animation: wave-flow 5s linear infinite;
+}
+
+.art-loaded {
+  animation: art-reveal 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.art-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(18, 40, 63, 0.6) 25%,
+    rgba(217, 164, 65, 0.1) 50%,
+    rgba(18, 40, 63, 0.6) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+.quest-title {
+  animation: quest-title-enter 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards,
+             gold-pulse 2.4s ease-in-out 700ms infinite;
+}
+
+.quest-text {
+  opacity: 0;
+  animation: quest-text-enter 600ms ease-out 450ms forwards;
+}
+
+.quest-reward {
+  opacity: 0;
+  animation: quest-text-enter 600ms ease-out 750ms forwards;
+}
+
+.quest-rule {
+  transform-origin: center;
+  animation: rule-expand 600ms cubic-bezier(0.22, 1, 0.36, 1) 300ms both;
 }

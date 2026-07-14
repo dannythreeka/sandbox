@@ -37,11 +37,19 @@ export function QuestChapterCutscene({ payload, onDone }: Props) {
         跳過（ESC）
       </button>
 
-      <p className="text-sm uppercase tracking-widest text-gold/70">主線任務完成</p>
-      <h2 className="mt-2 text-3xl font-bold text-gold">{payload.title}</h2>
-      <p className="mt-6 max-w-xl text-center leading-relaxed text-slate-200">{payload.narrative}</p>
+      <p className="quest-text text-sm uppercase tracking-widest text-gold/70" style={{ animationDelay: "0ms", animationDuration: "500ms" }}>
+        主線任務完成
+      </p>
+
+      {/* 黃金分隔線，完成後由中心向外展開 */}
+      <div className="quest-rule my-3 h-px w-48 bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+
+      <h2 className="quest-title mt-1 text-3xl font-bold text-gold">{payload.title}</h2>
+
+      <p className="quest-text mt-6 max-w-xl text-center leading-relaxed text-slate-200">{payload.narrative}</p>
+
       {(payload.goldReward > 0 || payload.fameReward > 0) && (
-        <p className="mt-6 text-sm text-slate-400">
+        <p className="quest-reward mt-6 rounded-lg border border-gold/30 bg-abyss/40 px-4 py-2 text-sm text-slate-400">
           {payload.goldReward > 0 && `獲得 ${payload.goldReward.toLocaleString()} 金幣`}
           {payload.goldReward > 0 && payload.fameReward > 0 ? " · " : ""}
           {payload.fameReward > 0 && `聲望 +${payload.fameReward}`}
