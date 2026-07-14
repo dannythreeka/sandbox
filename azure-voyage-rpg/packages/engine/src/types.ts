@@ -106,6 +106,39 @@ export interface Hotspot {
   label: string;
   eventPool: string[];
   visibleIf?: Condition;
+  position?: { x: number; y: number };
+}
+
+export type ArtCategory = "port-scene" | "portrait" | "ship" | "key-visual" | "battle-bg" | "event" | "goods";
+
+export interface SceneVisualAsset {
+  category: ArtCategory;
+  id: string;
+}
+
+export interface SceneVisualPalette {
+  sky: string;
+  horizon: string;
+  sea: string;
+  accent: string;
+  glow: string;
+}
+
+export interface SceneVisual {
+  summary?: string;
+  ambience?: "harbor-office" | "tavern" | "market" | "docks";
+  backdrop?: SceneVisualAsset;
+  camera?: {
+    focusX?: number;
+    focusY?: number;
+    zoom?: number;
+  };
+  overlay?: SceneVisualAsset & {
+    position?: "left" | "center" | "right";
+    size?: "sm" | "md" | "lg";
+    opacity?: number;
+  };
+  palette?: SceneVisualPalette;
 }
 
 export interface Scene {
@@ -114,6 +147,7 @@ export interface Scene {
   name: string;
   hotspots: Hotspot[];
   timeGate?: TimeWindow;
+  visual?: SceneVisual;
 }
 
 // ── 事件系統 ──
@@ -189,6 +223,12 @@ export interface Npc {
   name: string;
   portrait: string;
   homeScene: string;
+  aliases?: string[];
+  visual?: {
+    portraitId?: string;
+    accentColor?: string;
+    background?: string;
+  };
   schedule?: ScheduleEntry[];
   affinityTiers?: AffinityTier[];
 }
