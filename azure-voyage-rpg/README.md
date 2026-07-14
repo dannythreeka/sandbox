@@ -30,3 +30,14 @@ pnpm typecheck
 pnpm test
 pnpm build
 ```
+
+## 用 Docker 一鍵試玩
+
+純前端原型，不需要資料庫/佇列，存檔在瀏覽器 localStorage：
+
+```bash
+docker compose up --build
+```
+
+等 `web` 印出 `Ready` 後，打開 http://localhost:3100 即可遊玩。想清掉容器就
+`docker compose down`（沒有掛 volume，不會留下任何資料）。
