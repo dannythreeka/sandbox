@@ -26,17 +26,4 @@ export default tseslint.config(
       ],
     },
   },
-  {
-    files: ["tools/artgen/**/*.mjs"],
-    languageOptions: {
-      globals: {
-        Buffer: "readonly",
-        URL: "readonly",
-        console: "readonly",
-        fetch: "readonly",
-        process: "readonly",
-        setTimeout: "readonly",
-      },
-    },
-  },
 );
