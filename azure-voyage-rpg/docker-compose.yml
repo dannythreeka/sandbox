@@ -1,0 +1,8 @@
+services:
+  # 純前端原型：不需要資料庫/佇列，localStorage 存檔。單一 image 就能玩。
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3100:3100"
