@@ -84,6 +84,14 @@ describe("main quest chain playthrough (favorable rng)", () => {
     expect(engine.state.unlocked.areas).toContain("area.perlan");
     expect(engine.state.unlocked.scenes).toContain("scene.perlan.docks");
 
+    // ── 序章尾聲：回港務廳向馬瑟斯覆命（此時是黃昏，港務廳仍開門）──
+    engine.travelTo("scene.aurelia.harbor_office");
+    node = engine.interact("hotspot.harbor_office.desk"); // 開場 once 已完成，改觸發 part_one_end
+    expect(node?.kind).toBe("dialogue");
+    node = drain(engine);
+    expect(node.kind).toBe("end");
+    expect(engine.state.flags).toContain("flag.part_one_complete");
+
     // ── 佩爾蘭支線：老漁夫圖克 ──
     engine.travelTo("scene.perlan.docks");
     node = engine.interact("hotspot.perlan.old_fisherman"); // 只有 meet_tuk 符合條件
@@ -105,10 +113,28 @@ describe("main quest chain playthrough (favorable rng)", () => {
     expect(engine.state.reputation["area.perlan"]).toBe(10);
 
     // ── 主線任務目標此刻應全數判定為完成 ──
-    for (const questId of ["quest.ch1_first_trade", "quest.ch2_crew", "quest.ch3_first_battle", "quest.side_perlan"]) {
+    for (const questId of [
+      "quest.ch1_first_trade",
+      "quest.ch2_crew",
+      "quest.ch3_first_battle",
+      "quest.ch4_report_back",
+      "quest.side_perlan",
+    ]) {
       const quest = content.quests[questId];
       for (const objective of quest.objectives) {
         expect(evaluateCondition(objective.completeWhen, engine.state)).toBe(true);
+      }
+    }
+  });
+
+  it("every active MAIN quest always has a discoverable next step (no dead-ends)", () => {
+    // 反卡關保證：主線每一個「已開啟、未完成」的目標都必須帶 hint，且 hint 指向
+    // 的觸發事件在內容包裡真的存在（靠 validateContent 保證引用完整）。這裡確保
+    // 每條主線 objective 都寫了 hint，避免日後新增章節忘了給引路提示又讓玩家卡死。
+    for (const quest of Object.values(content.quests)) {
+      if (quest.kind !== "MAIN") continue;
+      for (const objective of quest.objectives) {
+        expect(objective.hint, `${quest.id}/${objective.id} 缺少 hint`).toBeTruthy();
       }
     }
   });

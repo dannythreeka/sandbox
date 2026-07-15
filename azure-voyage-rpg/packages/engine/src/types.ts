@@ -272,6 +272,8 @@ export interface Npc {
 export interface Objective {
   id: string;
   description: string;
+  /** 引路提示：告訴玩家「去哪、什麼時候」才能推進，避免探索型 RPG 卡在找不到觸發點。 */
+  hint?: string;
   completeWhen: Condition;
 }
 
