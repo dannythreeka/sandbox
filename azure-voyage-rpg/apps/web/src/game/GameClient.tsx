@@ -286,6 +286,16 @@ export function GameClient() {
     ],
     [scene.visual?.overlay?.category, scene.visual?.overlay?.id, state.clock.phase],
   );
+  // 目前該做什麼：第一條「已開啟、未完成」的主線目標——常駐顯示，玩家不必開
+  // 日誌就知道下一步往哪走（探索型 RPG 最怕的就是玩家不知道觸發點在哪）。
+  const currentGuidance = useMemo(() => {
+    for (const { quest, objectives } of questSummaries) {
+      if (quest.kind !== "MAIN") continue;
+      const next = objectives.find((o) => !o.done);
+      if (next) return { title: quest.title, objective: next.objective };
+    }
+    return null;
+  }, [questSummaries]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-6 md:px-6">
@@ -317,6 +327,16 @@ export function GameClient() {
 
       <div className="game-layout">
         <main className="space-y-4">
+          {currentGuidance && (
+            <section className="panel guidance-banner">
+              <p className="text-xs text-foam/60">目前主線・{currentGuidance.title}</p>
+              <p className="text-sm text-foam/90">◆ {currentGuidance.objective.description}</p>
+              {currentGuidance.objective.hint && (
+                <p className="mt-1 text-xs text-gold/80">↳ {currentGuidance.objective.hint}</p>
+              )}
+            </section>
+          )}
+
           {state.unlocked.areas.length > 0 && (
             <section className="panel route-map-panel">
               <div className="route-map-header">
@@ -583,9 +603,14 @@ export function GameClient() {
                     [{quest.kind === "MAIN" ? "主線" : quest.kind === "SIDE" ? "支線" : quest.kind}] {quest.title}
                   </p>
                   {objectives.map(({ objective, done }) => (
-                    <p key={objective.id} className={`text-xs ${done ? "text-foam/50 line-through" : "text-foam/90"}`}>
-                      {done ? "✓" : "□"} {objective.description}
-                    </p>
+                    <div key={objective.id} className="space-y-0.5">
+                      <p className={`text-xs ${done ? "text-foam/50 line-through" : "text-foam/90"}`}>
+                        {done ? "✓" : "□"} {objective.description}
+                      </p>
+                      {!done && objective.hint && (
+                        <p className="pl-4 text-[11px] text-gold/70">↳ {objective.hint}</p>
+                      )}
+                    </div>
                   ))}
                 </div>
               ))}

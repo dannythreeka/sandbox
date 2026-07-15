@@ -26,7 +26,7 @@ export const AURELIA_SCENES: Record<string, Scene> = {
       {
         id: "hotspot.harbor_office.desk",
         label: "長桌前的馬瑟斯",
-        eventPool: ["event.opening"],
+        eventPool: ["event.opening", "event.harbor_office.part_one_end"],
         position: { x: 31, y: 66 },
       },
       {

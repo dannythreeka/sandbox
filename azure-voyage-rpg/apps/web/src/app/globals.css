@@ -486,6 +486,13 @@ body {
   @apply text-sm font-medium;
 }
 
+.scene-stage-wait {
+  position: absolute;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 3;
+}
+
 .scene-stage-closed {
   position: absolute;
   left: 1.5rem;
@@ -736,6 +743,10 @@ body {
 
 .scene-nav-buttons {
   @apply flex flex-wrap gap-2;
+}
+
+.guidance-banner {
+  @apply space-y-1 border-gold/40 bg-gold/5;
 }
 
 .route-map-panel {

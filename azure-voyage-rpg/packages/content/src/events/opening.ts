@@ -85,4 +85,48 @@ export const OPENING_EVENTS: Record<string, GameEvent> = {
       },
     ],
   },
+  // 第一部尾聲（docs/28 第一部收束）：頂住緋帆團後回港務廳向馬瑟斯覆命。
+  // 同時清楚告訴玩家「目前的原型內容到這裡」，避免劇情突然停住讓人以為卡關。
+  "event.harbor_office.part_one_end": {
+    id: "event.harbor_office.part_one_end",
+    precondition: {
+      kind: "and",
+      all: [
+        { kind: "flag", flag: "flag.first_battle_done", value: true },
+        { kind: "not", cond: { kind: "flag", flag: "flag.part_one_complete", value: true } },
+      ],
+    },
+    weight: 200, // 蓋過同熱點的開場事件（開場 once 已完成，這裡保險起見給高權重）
+    once: true,
+    entryNodeId: "n1",
+    nodes: [
+      {
+        kind: "dialogue",
+        id: "n1",
+        speaker: "馬瑟斯·凡登霍夫",
+        text: "「頂住緋帆團一次了？」老人放下手裡的帳冊，難得地正眼看了你很久。「當年拿著半張圖來的那個年輕人，總算活過了第一個風暴季。」",
+        goto: "n2",
+      },
+      {
+        kind: "dialogue",
+        id: "n2",
+        speaker: "馬瑟斯",
+        text: "「但這只是開始。緋帆團不會善罷甘休，鐵崖、絹風、子午之海……你父親那半張圖指向的地方，還遠得很。」他把印信推回給你，「去吧。晨汐商會的名字，才剛開始有人記得。」",
+        goto: "n3",
+      },
+      {
+        kind: "effect",
+        id: "n3",
+        effect: { setFlags: ["flag.part_one_complete"] },
+        goto: "n_ooc",
+      },
+      {
+        kind: "dialogue",
+        id: "n_ooc",
+        speaker: "【第一部・完】",
+        text: "感謝遊玩《蒼瀾航路：晨汐紀事》的原型。第一部「初出茅廬」到此告一段落——後續章節（跨海域擴張、緋帆團的真正面目、暮色洋盡頭的沉船真相）正在開發中。你隨時可以繼續在琥珀灣走動、探索佩爾蘭，或用右上角「重新開始」再走一遍不同的選擇。",
+        goto: "END",
+      },
+    ],
+  },
 };
