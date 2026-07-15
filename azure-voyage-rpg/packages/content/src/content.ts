@@ -1,4 +1,4 @@
-import { createInitialSaveState, type ContentPack, type SaveState } from "@azure-voyage-rpg/engine";
+import { createInitialSaveState, type ContentPack, type SaveState, type Scene } from "@azure-voyage-rpg/engine";
 import { REGIONS, AREAS } from "./regionsAreas";
 import { AURELIA_SCENES } from "./scenes/aurelia";
 import { PERLAN_SCENES } from "./scenes/perlan";
@@ -8,6 +8,41 @@ import { MARKET_EVENTS } from "./events/market";
 import { PERLAN_EVENTS } from "./events/perlan";
 import { NPCS } from "./npcs";
 import { QUESTS } from "./quests";
+import { THEME_PRESETS } from "./themePresets";
+
+function injectThemePreset(scene: Scene): Scene {
+  const visual = scene.visual;
+  if (!visual?.themePresetId) {
+    return scene;
+  }
+
+  const preset = THEME_PRESETS[visual.themePresetId as keyof typeof THEME_PRESETS];
+  if (!preset) {
+    return scene;
+  }
+
+  const override = visual.themeTemplate;
+  return {
+    ...scene,
+    visual: {
+      ...visual,
+      themeTemplate: {
+        ...preset,
+        ...override,
+        elements: override?.elements?.length ? override.elements : preset.elements,
+      },
+    },
+  };
+}
+
+const BASE_SCENES: Record<string, Scene> = {
+  ...AURELIA_SCENES,
+  ...PERLAN_SCENES,
+};
+
+const SCENES: Record<string, Scene> = Object.fromEntries(
+  Object.entries(BASE_SCENES).map(([sceneId, scene]) => [sceneId, injectThemePreset(scene)]),
+);
 
 /**
  * P1/P2 垂直切片內容包（docs/29 §14 路線圖）：奧雷利亞 3 場景 + 佩爾蘭支線。
@@ -16,7 +51,7 @@ import { QUESTS } from "./quests";
 export const AZURE_VOYAGE_RPG_CONTENT: ContentPack = {
   regions: REGIONS,
   areas: AREAS,
-  scenes: { ...AURELIA_SCENES, ...PERLAN_SCENES },
+  scenes: SCENES,
   events: { ...OPENING_EVENTS, ...TAVERN_EVENTS, ...MARKET_EVENTS, ...PERLAN_EVENTS },
   npcs: NPCS,
   quests: QUESTS,

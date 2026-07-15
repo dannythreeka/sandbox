@@ -70,6 +70,8 @@ const SPECIAL_SPEAKERS: Record<string, SpeakerVisual> = {
     name: "你",
     accentColor: "#f6cf7d",
     background: "linear-gradient(135deg, #4b2e15 0%, #1a2438 100%)",
+    portraitCategory: "portrait",
+    portraitId: "lyra",
   },
   "市場掮客": {
     name: "市場掮客",
@@ -269,6 +271,21 @@ export function GameClient() {
     return null;
   }, [activeNode]);
   const battleSuccessHint = activeNode?.kind === "checkResult" ? activeNode.success : undefined;
+  const phaseBackdropById: Record<GamePhase, "calm" | "night" | "storm"> = {
+    DAWN: "calm",
+    DAY: "calm",
+    DUSK: "storm",
+    NIGHT: "night",
+  };
+  const sceneMoodFrames = useMemo(
+    () => [
+      { id: phaseBackdropById[state.clock.phase], category: "battle-bg" as const, label: `${PHASE_LABELS[state.clock.phase]}氛圍` },
+      { id: "title", category: "key-visual" as const, label: "蒼瀾主視覺" },
+      { id: scene.visual?.overlay?.id ?? "discovery", category: (scene.visual?.overlay?.category ?? "event") as ArtCategory, label: "場景焦點" },
+      { id: state.clock.phase === "NIGHT" ? "ismay" : "lyra", category: "portrait" as const, label: "角色氛圍" },
+    ],
+    [scene.visual?.overlay?.category, scene.visual?.overlay?.id, state.clock.phase],
+  );
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-6 md:px-6">
@@ -359,6 +376,8 @@ export function GameClient() {
             hotspots={sceneView.hotspots}
             sceneOpen={sceneOpen}
             activeNode={activeNode}
+            phase={state.clock.phase}
+            season={state.clock.season}
             travelLabel={travelTransition?.label}
             travelKind={travelTransition?.kind}
             onInteract={handleInteract}
@@ -468,6 +487,24 @@ export function GameClient() {
             transitionKey={travelTransition?.label ?? null}
             choiceOpen={activeNode?.kind === "choice"}
           />
+
+          <section className="panel">
+            <h2 className="panel-title">視覺圖庫</h2>
+            <div className="scene-gallery">
+              {sceneMoodFrames.map((frame) => (
+                <article key={`${frame.category}:${frame.id}`} className="scene-gallery-card">
+                  <GameArt
+                    category={frame.category}
+                    id={frame.id}
+                    alt={frame.label}
+                    className="scene-gallery-image"
+                    fallback={<div className="scene-gallery-fallback" />}
+                  />
+                  <p>{frame.label}</p>
+                </article>
+              ))}
+            </div>
+          </section>
 
           <section className="panel status-panel">
             <h2 className="panel-title">航海狀態</h2>

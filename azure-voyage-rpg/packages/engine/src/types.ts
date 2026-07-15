@@ -124,9 +124,44 @@ export interface SceneVisualPalette {
   glow: string;
 }
 
+export type SceneTheme =
+  | "harbor-ledger-haze"
+  | "tavern-hearth-smoke"
+  | "market-bustle-sails"
+  | "perlan-tide-mist";
+
+export interface SceneThemeAxisPattern {
+  start: number;
+  step: number;
+  unit?: "%" | "px" | "rem";
+}
+
+export interface SceneThemeDelayPattern {
+  start?: number;
+  step: number;
+  unit?: "s" | "ms";
+}
+
+export interface SceneThemeElementTemplate {
+  keyPrefix: string;
+  className: string;
+  count: number;
+  left?: SceneThemeAxisPattern;
+  top?: SceneThemeAxisPattern;
+  delay?: SceneThemeDelayPattern;
+}
+
+export interface SceneThemeTemplate {
+  rootClassName?: string;
+  elements?: SceneThemeElementTemplate[];
+}
+
 export interface SceneVisual {
   summary?: string;
   ambience?: "harbor-office" | "tavern" | "market" | "docks";
+  theme?: SceneTheme;
+  themePresetId?: string;
+  themeTemplate?: SceneThemeTemplate;
   backdrop?: SceneVisualAsset;
   camera?: {
     focusX?: number;

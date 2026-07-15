@@ -10,6 +10,7 @@ interface BattleCinematicProps {
 
 export function BattleCinematic({ phase, successHint }: BattleCinematicProps) {
   const [flashOn, setFlashOn] = useState(false);
+  const backdropId = phase === "engage" ? "storm" : successHint ? "calm" : "night";
 
   useEffect(() => {
     setFlashOn(true);
@@ -19,8 +20,24 @@ export function BattleCinematic({ phase, successHint }: BattleCinematicProps) {
 
   return (
     <section className={`battle-cinematic ${phase === "resolution" ? "is-resolution" : ""}`}>
+      <GameArt
+        category="battle-bg"
+        id={backdropId}
+        alt="海戰背景"
+        className="battle-cinematic-backdrop"
+        fallback={<div className="battle-cinematic-fallback" />}
+      />
+      <GameArt
+        category="event"
+        id="pirate"
+        alt=""
+        className="battle-cinematic-emblem"
+        fallback={<div className="battle-emblem-fallback" />}
+      />
       <div className={`battle-flash ${flashOn ? "is-on" : ""}`} />
       <div className="battle-waterline" />
+      <div className="battle-smoke smoke-a" />
+      <div className="battle-smoke smoke-b" />
       <div className="battle-ship fleet-player">
         <GameArt
           category="ship"
