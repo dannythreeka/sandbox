@@ -118,6 +118,23 @@ body {
   background: linear-gradient(180deg, rgba(7, 13, 23, 0.1) 0%, rgba(6, 12, 24, 0.26) 34%, rgba(6, 13, 24, 0.72) 100%);
 }
 
+.scene-stage-weather-backdrop,
+.scene-stage-weather-fallback {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  mix-blend-mode: soft-light;
+  opacity: 0.32;
+  animation: weather-drift 18s ease-in-out infinite;
+}
+
+.scene-stage-weather-fallback {
+  background: radial-gradient(circle at top, rgba(181, 216, 232, 0.28) 0%, transparent 56%),
+    linear-gradient(180deg, rgba(44, 75, 102, 0.2) 0%, rgba(9, 21, 38, 0.5) 100%);
+}
+
 .scene-stage-sheen {
   position: absolute;
   inset: auto -12% 20% -12%;
@@ -171,6 +188,165 @@ body {
   height: 3px;
   opacity: 0.5;
   animation: sweep 10s linear infinite reverse;
+}
+
+.scene-stage-rain,
+.scene-stage-lanterns,
+.scene-stage-gulls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.scene-stage-rain span {
+  position: absolute;
+  top: -20%;
+  width: 1px;
+  height: 16%;
+  background: linear-gradient(180deg, rgba(185, 232, 248, 0.05), rgba(176, 228, 244, 0.75));
+  animation: rain-fall 1.7s linear infinite;
+}
+
+.scene-stage-lanterns span {
+  position: absolute;
+  top: 14%;
+  height: 0.55rem;
+  width: 0.55rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255, 232, 171, 0.95) 0%, rgba(255, 188, 105, 0.1) 72%);
+  box-shadow: 0 0 18px rgba(255, 209, 128, 0.5);
+  animation: lantern-float 5.6s ease-in-out infinite;
+}
+
+.scene-stage-gulls span {
+  position: absolute;
+  top: 20%;
+  border-top: 2px solid rgba(220, 240, 248, 0.72);
+  border-left: 2px solid transparent;
+  border-right: 2px solid transparent;
+  width: 1.1rem;
+  transform: skewX(-20deg);
+  animation: gull-fly 10s linear infinite;
+}
+
+.scene-stage-gulls .gull-1 {
+  left: 20%;
+  animation-delay: -1s;
+}
+
+.scene-stage-gulls .gull-2 {
+  left: 44%;
+  top: 14%;
+  animation-delay: -4.5s;
+}
+
+.scene-stage-gulls .gull-3 {
+  left: 68%;
+  top: 24%;
+  animation-delay: -8s;
+}
+
+.scene-theme {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.theme-harbor-ledger-haze .theme-ledger {
+  position: absolute;
+  top: 18%;
+  width: 1.3rem;
+  height: 1.9rem;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(243, 221, 176, 0.65) 0%, rgba(156, 117, 73, 0.08) 100%);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.15);
+  animation: ledger-drift 8s ease-in-out infinite;
+}
+
+.theme-harbor-ledger-haze .theme-dust {
+  position: absolute;
+  top: 12%;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 9999px;
+  background: rgba(242, 219, 171, 0.7);
+  filter: blur(1px);
+  animation: dust-float 6.5s linear infinite;
+}
+
+.theme-tavern-hearth-smoke .theme-ember {
+  position: absolute;
+  bottom: 20%;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255, 214, 118, 0.95) 0%, rgba(255, 127, 69, 0.15) 72%);
+  animation: ember-rise 2.8s ease-out infinite;
+}
+
+.theme-tavern-hearth-smoke .theme-smoke {
+  position: absolute;
+  bottom: 22%;
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(207, 192, 175, 0.32) 0%, rgba(82, 72, 66, 0.04) 72%);
+  filter: blur(3px);
+  animation: smoke-swirl 3.8s ease-out infinite;
+}
+
+.theme-tavern-hearth-smoke .plume-1 {
+  left: 24%;
+}
+
+.theme-tavern-hearth-smoke .plume-2 {
+  left: 46%;
+  animation-delay: -1.2s;
+}
+
+.theme-tavern-hearth-smoke .plume-3 {
+  left: 68%;
+  animation-delay: -2.1s;
+}
+
+.theme-market-bustle-sails .theme-banner {
+  position: absolute;
+  top: 18%;
+  width: 1rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 220, 139, 0.82) 0%, rgba(193, 82, 68, 0.22) 100%);
+  animation: banner-sway 4.6s ease-in-out infinite;
+}
+
+.theme-market-bustle-sails .theme-crowd-shadow {
+  position: absolute;
+  bottom: 19%;
+  width: 2.4rem;
+  height: 1rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(15, 26, 38, 0.54) 0%, rgba(14, 24, 36, 0) 72%);
+  animation: crowd-shift 3.2s ease-in-out infinite;
+}
+
+.theme-perlan-tide-mist .theme-mist-band {
+  position: absolute;
+  left: -8%;
+  width: 116%;
+  height: 1rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(213, 236, 247, 0.03) 0%, rgba(213, 236, 247, 0.28) 45%, rgba(213, 236, 247, 0.03) 100%);
+  animation: mist-slide 8.4s ease-in-out infinite;
+}
+
+.theme-perlan-tide-mist .theme-beacon {
+  position: absolute;
+  top: 21%;
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(226, 248, 255, 0.95) 0%, rgba(104, 171, 204, 0.24) 70%);
+  animation: beacon-blink 2.6s ease-in-out infinite;
 }
 
 .scene-stage-overlay {
@@ -353,6 +529,40 @@ body {
   border-color: rgba(132, 219, 227, 0.35);
 }
 
+.battle-cinematic-backdrop,
+.battle-cinematic-fallback {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+.battle-cinematic-backdrop {
+  opacity: 0.65;
+  animation: battle-backdrop-shift 9s ease-in-out infinite;
+}
+
+.battle-cinematic-fallback {
+  background: linear-gradient(180deg, rgba(23, 44, 67, 0.62) 0%, rgba(8, 20, 32, 0.88) 100%);
+}
+
+.battle-cinematic-emblem,
+.battle-emblem-fallback {
+  position: absolute;
+  right: 0.8rem;
+  top: 0.7rem;
+  height: 2.4rem;
+  width: 2.4rem;
+  border-radius: 9999px;
+  opacity: 0.45;
+  mix-blend-mode: screen;
+}
+
+.battle-emblem-fallback {
+  background: radial-gradient(circle, rgba(230, 151, 130, 0.9) 0%, rgba(93, 46, 47, 0.14) 70%);
+}
+
 .battle-flash {
   position: absolute;
   inset: 0;
@@ -373,6 +583,26 @@ body {
   height: 2px;
   background: linear-gradient(90deg, transparent 0%, rgba(132, 219, 227, 0.72) 46%, transparent 100%);
   animation: battle-wave 3.2s linear infinite;
+}
+
+.battle-smoke {
+  position: absolute;
+  bottom: 38%;
+  height: 3rem;
+  width: 3rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(208, 225, 239, 0.4) 0%, rgba(98, 123, 142, 0.06) 72%);
+  filter: blur(2px);
+}
+
+.battle-smoke.smoke-a {
+  left: 35%;
+  animation: smoke-rise 2.6s ease-out infinite;
+}
+
+.battle-smoke.smoke-b {
+  right: 34%;
+  animation: smoke-rise 2.9s ease-out -0.9s infinite;
 }
 
 .battle-ship {
@@ -527,6 +757,33 @@ body {
 .route-area-track,
 .route-scene-track {
   @apply grid gap-3;
+}
+
+.scene-gallery {
+  @apply grid gap-3;
+}
+
+.scene-gallery-card {
+  @apply overflow-hidden rounded-xl border border-foam/10 bg-abyss/40;
+}
+
+.scene-gallery-image,
+.scene-gallery-fallback {
+  height: 4.5rem;
+  width: 100%;
+  object-fit: cover;
+}
+
+.scene-gallery-image {
+  animation: gallery-drift 12s ease-in-out infinite;
+}
+
+.scene-gallery-fallback {
+  background: linear-gradient(135deg, rgba(71, 106, 135, 0.45), rgba(18, 34, 52, 0.8));
+}
+
+.scene-gallery-card p {
+  @apply px-3 py-2 text-xs text-foam/75;
 }
 
 .route-area-track {
@@ -757,47 +1014,238 @@ body {
   0% {
     transform: translateX(-3%);
   }
-
-  @keyframes battle-wave {
-    0% {
-      transform: translateX(-5%);
-    }
-    50% {
-      transform: translateX(5%);
-    }
-    100% {
-      transform: translateX(-5%);
-    }
+  50% {
+    transform: translateX(3%);
   }
-
-  @keyframes fleet-player {
-    0% {
-      transform: translateY(0) rotate(-2deg);
-    }
-    50% {
-      transform: translateY(-4px) rotate(1.4deg);
-    }
-    100% {
-      transform: translateY(0) rotate(-2deg);
-    }
+  100% {
+    transform: translateX(-3%);
   }
+}
 
-  @keyframes fleet-enemy {
-    0% {
-      transform: translateY(-2px) rotate(2deg);
-    }
-    50% {
-      transform: translateY(3px) rotate(-1.3deg);
-    }
-    100% {
-      transform: translateY(-2px) rotate(2deg);
-    }
+@keyframes battle-wave {
+  0% {
+    transform: translateX(-5%);
+  }
+  50% {
+    transform: translateX(5%);
+  }
+  100% {
+    transform: translateX(-5%);
+  }
+}
+
+@keyframes fleet-player {
+  0% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(1.4deg);
+  }
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+}
+
+@keyframes fleet-enemy {
+  0% {
+    transform: translateY(-2px) rotate(2deg);
+  }
+  50% {
+    transform: translateY(3px) rotate(-1.3deg);
+  }
+  100% {
+    transform: translateY(-2px) rotate(2deg);
+  }
+}
+
+@keyframes weather-drift {
+  0% {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: scale(1.06) translate3d(-1.2%, -0.8%, 0);
+  }
+  100% {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes rain-fall {
+  0% {
+    transform: translateY(-12%) translateX(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(120%) translateX(-18px);
+    opacity: 0;
+  }
+}
+
+@keyframes lantern-float {
+  0% {
+    transform: translateY(0) scale(0.92);
+  }
+  50% {
+    transform: translateY(-9px) scale(1.04);
+  }
+  100% {
+    transform: translateY(0) scale(0.92);
+  }
+}
+
+@keyframes gull-fly {
+  0% {
+    transform: translate3d(-14vw, 0, 0) scale(0.9);
+    opacity: 0;
+  }
+  15%,
+  78% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate3d(56vw, -12px, 0) scale(1.04);
+    opacity: 0;
+  }
+}
+
+@keyframes battle-backdrop-shift {
+  0% {
+    transform: scale(1.02) translateX(0);
+  }
+  50% {
+    transform: scale(1.06) translateX(-1%);
+  }
+  100% {
+    transform: scale(1.02) translateX(0);
+  }
+}
+
+@keyframes smoke-rise {
+  0% {
+    transform: translateY(0) scale(0.7);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(-34px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes gallery-drift {
+  0% {
+    transform: scale(1.02) translateX(0);
+  }
+  50% {
+    transform: scale(1.08) translateX(-1.2%);
+  }
+  100% {
+    transform: scale(1.02) translateX(0);
+  }
+}
+
+@keyframes ledger-drift {
+  0% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(8px) rotate(3deg);
+  }
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+}
+
+@keyframes dust-float {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  20%,
+  80% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate3d(26px, 42px, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes ember-rise {
+  0% {
+    transform: translateY(0) scale(0.7);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-48px) scale(1.25);
+    opacity: 0;
+  }
+}
+
+@keyframes smoke-swirl {
+  0% {
+    transform: translateY(0) scale(0.72);
+    opacity: 0.35;
+  }
+  100% {
+    transform: translateY(-36px) scale(1.14);
+    opacity: 0;
+  }
+}
+
+@keyframes banner-sway {
+  0% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(6deg);
+  }
+  100% {
+    transform: rotate(-5deg);
+  }
+}
+
+@keyframes crowd-shift {
+  0% {
+    transform: translateX(0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateX(12px);
+    opacity: 0.62;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 0.4;
+  }
+}
+
+@keyframes mist-slide {
+  0% {
+    transform: translateX(-3%);
   }
   50% {
     transform: translateX(3%);
   }
   100% {
     transform: translateX(-3%);
+  }
+}
+
+@keyframes beacon-blink {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.84);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.28);
   }
 }
 

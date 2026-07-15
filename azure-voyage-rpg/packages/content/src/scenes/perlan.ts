@@ -8,6 +8,8 @@ export const PERLAN_SCENES: Record<string, Scene> = {
     visual: {
       summary: "偏遠小港比奧雷利亞安靜許多，潮水拍著木樁，荒鹽田的白痕在遠處像還沒癒合的舊傷。",
       ambience: "docks",
+      theme: "perlan-tide-mist",
+      themePresetId: "perlan-tide-mist",
       backdrop: { category: "port-scene", id: "amber_gulf-s2" },
       camera: { focusX: 70, focusY: 46, zoom: 1.12 },
       overlay: { category: "event", id: "storm", position: "right", size: "md", opacity: 0.24 },

@@ -9,6 +9,8 @@ export const AURELIA_SCENES: Record<string, Scene> = {
     visual: {
       summary: "帶著鹽霧與紙張氣味的長廳裡，晨光從港邊窗格斜切進來，像替你的新航路蓋下第一枚印記。",
       ambience: "harbor-office",
+      theme: "harbor-ledger-haze",
+      themePresetId: "aurelia-harbor-ledger-haze",
       backdrop: { category: "port-scene", id: "amber_gulf-s2" },
       camera: { focusX: 34, focusY: 40, zoom: 1.1 },
       overlay: { category: "event", id: "anchor", position: "right", size: "md", opacity: 0.3 },
@@ -44,6 +46,8 @@ export const AURELIA_SCENES: Record<string, Scene> = {
     visual: {
       summary: "橘金燈火映在木桌與玻璃杯上，海員的笑罵與樂聲混在一起，像整座港都的心跳。",
       ambience: "tavern",
+      theme: "tavern-hearth-smoke",
+      themePresetId: "aurelia-tavern-hearth-smoke",
       backdrop: { category: "port-scene", id: "amber_gulf-s2" },
       camera: { focusX: 56, focusY: 52, zoom: 1.14 },
       overlay: { category: "event", id: "festival", position: "center", size: "lg", opacity: 0.22 },
@@ -80,6 +84,8 @@ export const AURELIA_SCENES: Record<string, Scene> = {
     visual: {
       summary: "帆布棚下堆滿香料、橄欖油與麻布，討價還價聲一路延伸到碼頭邊的風裡。",
       ambience: "market",
+      theme: "market-bustle-sails",
+      themePresetId: "aurelia-market-bustle-sails",
       backdrop: { category: "port-scene", id: "amber_gulf-s2" },
       camera: { focusX: 62, focusY: 44, zoom: 1.08 },
       overlay: { category: "event", id: "rumor", position: "left", size: "md", opacity: 0.26 },

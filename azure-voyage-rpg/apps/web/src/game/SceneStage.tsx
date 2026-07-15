@@ -1,14 +1,25 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import type { Hotspot, PlayNode, Scene } from '@azure-voyage-rpg/engine';
-import { GameArt } from '@/game/GameArt';
+import type {
+  GamePhase,
+  Hotspot,
+  PlayNode,
+  Scene,
+  SceneTheme,
+  SceneThemeTemplate,
+  Season,
+} from "@azure-voyage-rpg/engine";
+import { GameArt } from "@/game/GameArt";
+import { SCENE_THEME_BY_SCENE_ID, resolveSceneThemeTemplate } from "@/game/sceneThemeTemplates";
 
 interface SceneStageProps {
   scene: Scene;
   hotspots: Hotspot[];
   sceneOpen: boolean;
   activeNode: PlayNode | null;
+  phase: GamePhase;
+  season: Season;
   travelLabel?: string | null;
   travelKind?: "scene" | "area";
   onInteract: (hotspotId: string) => void;
@@ -20,6 +31,8 @@ export function SceneStage({
   hotspots,
   sceneOpen,
   activeNode,
+  phase,
+  season,
   travelLabel,
   travelKind,
   onInteract,
@@ -46,6 +59,19 @@ export function SceneStage({
     "--camera-focus-y": `${camera.focusY}%`,
     "--camera-zoom": `${camera.zoom}`,
   } as CSSProperties;
+  const phaseKey = phase.toLowerCase();
+  const seasonKey = season.toLowerCase();
+  const phaseBackdropById: Record<GamePhase, "calm" | "night" | "storm"> = {
+    DAWN: "calm",
+    DAY: "calm",
+    DUSK: "storm",
+    NIGHT: "night",
+  };
+  const phaseBackdropId = phaseBackdropById[phase];
+  const showRain = visual?.ambience === "docks" || phase === "NIGHT";
+  const showLanterns = phase === "DUSK" || phase === "NIGHT";
+  const showGulls = phase === "DAWN" || phase === "DAY";
+  const sceneTheme = visual?.theme ?? SCENE_THEME_BY_SCENE_ID[scene.id] ?? "harbor-ledger-haze";
 
   useEffect(() => {
     setEntering(true);
@@ -56,7 +82,7 @@ export function SceneStage({
   return (
     <section className="scene-stage panel">
       <div
-        className={`scene-stage-media ambience-${visual?.ambience ?? "harbor-office"} ${entering ? `is-entering transition-${travelKind ?? "scene"}` : ""}`}
+        className={`scene-stage-media ambience-${visual?.ambience ?? "harbor-office"} phase-${phaseKey} season-${seasonKey} ${entering ? `is-entering transition-${travelKind ?? "scene"}` : ""}`}
         style={style}
       >
         {visual?.backdrop ? (
@@ -71,6 +97,35 @@ export function SceneStage({
           <SceneBackdropFallback sceneName={scene.name} />
         )}
         <div className="scene-stage-shade" />
+        <GameArt
+          category="battle-bg"
+          id={phaseBackdropId}
+          alt=""
+          className="scene-stage-weather-backdrop"
+          fallback={<div className="scene-stage-weather-fallback" aria-hidden="true" />}
+        />
+        {showRain && (
+          <div className="scene-stage-rain" aria-hidden="true">
+            {Array.from({ length: 22 }).map((_, index) => (
+              <span key={index} style={{ left: `${(index * 9) % 100}%`, animationDelay: `${(index % 6) * -0.35}s` }} />
+            ))}
+          </div>
+        )}
+        {showLanterns && (
+          <div className="scene-stage-lanterns" aria-hidden="true">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <span key={index} style={{ left: `${8 + index * 16}%`, animationDelay: `${index * -0.8}s` }} />
+            ))}
+          </div>
+        )}
+        {showGulls && (
+          <div className="scene-stage-gulls" aria-hidden="true">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <span key={index} className={`gull-${index + 1}`} />
+            ))}
+          </div>
+        )}
+        <SceneThemePackage theme={sceneTheme} templateOverride={visual?.themeTemplate} />
         <div className="scene-stage-sheen" />
         <div className="scene-stage-orb orb-a" />
         <div className="scene-stage-orb orb-b" />
@@ -147,6 +202,25 @@ function SceneBackdropFallback({ sceneName }: { sceneName: string }) {
       <div className="fallback-sun" />
       <div className="fallback-water" />
       <div className="fallback-city" />
+    </div>
+  );
+}
+
+function SceneThemePackage({
+  theme,
+  templateOverride,
+}: {
+  theme: SceneTheme;
+  templateOverride?: SceneThemeTemplate;
+}) {
+  const template = resolveSceneThemeTemplate(theme, templateOverride);
+  return (
+    <div className={`scene-theme ${template.rootClassName}`} aria-hidden="true">
+      {template.elements.map((spec) =>
+        Array.from({ length: spec.count }).map((_, index) => (
+          <span key={`${spec.keyPrefix}-${index}`} className={spec.className} style={spec.styleAt(index)} />
+        )),
+      )}
     </div>
   );
 }

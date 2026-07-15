@@ -38,6 +38,9 @@ pnpm build
 - 角色對話視覺資料宣告在 `packages/content/src/npcs.ts`，可指定別名與對話時使用的立繪／色彩。
 - 前端提供可手動啟用（符合瀏覽器限制）的 Web Audio 音效/BGM 控制，依不同場景 ambience 動態調整音場。
 - 戰鬥／交火段落會在對話區上方顯示動態戰鬥演出（艦船與光效），強化事件張力。
+- 額外加入 battle-bg/key-visual/portrait 圖庫與天候效果（雨幕、燈光、飛鳥），提升場景動畫密度。
+- 每個場景可用 `SceneVisual.theme` 指定專屬動畫主題包（港務廳文件塵霧／酒館爐火煙霧／市場帆旗人流／佩爾蘭潮霧燈號）。
+- 主題包支援 content 端可配置：場景可用 `SceneVisual.themePresetId` 引用 `packages/content/src/themePresets.ts` 的共用模板，並可透過 `SceneVisual.themeTemplate` 做局部覆寫；未指定時會回退到 `apps/web/src/game/sceneThemeTemplates.ts` 的主題預設。
 
 ## 用 Docker 一鍵試玩
 
