@@ -1410,3 +1410,105 @@ body {
     transform: none !important;
   }
 }
+
+/* ── Error Boundary ── */
+.game-error-boundary {
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.game-error-card {
+  max-width: 28rem;
+  width: 100%;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(246, 207, 125, 0.25);
+  background: linear-gradient(135deg, rgba(10, 20, 35, 0.95) 0%, rgba(16, 30, 50, 0.98) 100%);
+  padding: 2.5rem 2rem;
+  text-align: center;
+  backdrop-filter: blur(16px);
+}
+
+.game-error-kicker {
+  @apply text-xs uppercase tracking-[0.3em] text-foam/60;
+}
+
+.game-error-title {
+  @apply mt-3 text-xl font-semibold text-gold;
+}
+
+.game-error-body {
+  @apply mt-3 text-sm leading-6 text-foam/80;
+}
+
+.game-error-detail {
+  @apply mt-2 break-all rounded-lg border border-foam/10 bg-abyss/50 px-3 py-2 text-left font-mono text-[0.72rem] text-foam/55;
+}
+
+.game-error-card .btn {
+  @apply mt-5;
+}
+
+/* ── Onboarding Overlay ── */
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(6, 12, 24, 0.72);
+  backdrop-filter: blur(8px);
+  animation: dialogue-rise 320ms ease-out;
+}
+
+.onboarding-card {
+  max-width: 26rem;
+  width: 100%;
+  border-radius: 2rem;
+  border: 1px solid rgba(246, 207, 125, 0.3);
+  background: linear-gradient(135deg, rgba(10, 22, 38, 0.97) 0%, rgba(17, 32, 52, 0.99) 100%);
+  padding: 2.25rem 2rem 2rem;
+  text-align: center;
+  box-shadow: 0 40px 80px -24px rgba(0, 0, 0, 0.9);
+}
+
+.onboarding-step-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.onboarding-dot {
+  height: 0.45rem;
+  width: 0.45rem;
+  border-radius: 9999px;
+  background: rgba(163, 194, 212, 0.3);
+  transition: background 200ms ease, width 200ms ease;
+}
+
+.onboarding-dot.is-active {
+  width: 1.6rem;
+  background: rgba(246, 207, 125, 0.85);
+}
+
+.onboarding-icon {
+  @apply text-4xl;
+  line-height: 1;
+}
+
+.onboarding-title {
+  @apply mt-4 text-lg font-semibold text-gold;
+}
+
+.onboarding-body {
+  @apply mt-3 text-sm leading-6 text-foam/80;
+}
+
+.onboarding-actions {
+  @apply mt-6 flex items-center justify-center gap-3;
+}
