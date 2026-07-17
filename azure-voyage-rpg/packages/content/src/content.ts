@@ -63,11 +63,12 @@ export const AZURE_VOYAGE_RPG_CONTENT: ContentPack = {
  * 港內迷霧），玩家可以自由在港務廳／酒館／市場之間走動——只是各場景是否
  * 「開門」還要看 timeGate（見 scenes/aurelia.ts）。
  */
-export function createStartState(): SaveState {
+export function createStartState(opts?: { captainName?: string }): SaveState {
   const base = createInitialSaveState({
     startSceneId: AZURE_VOYAGE_RPG_CONTENT.startSceneId,
     startAreaId: "area.aurelia",
     startRegionId: "region.amber_gulf",
+    captainName: opts?.captainName,
   });
   return {
     ...base,
