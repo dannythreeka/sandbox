@@ -236,6 +236,39 @@ export function GameClient() {
     return () => window.clearTimeout(timer);
   }, [scene, state.currentSceneId]);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+
+      if ((event.key === "j" || event.key === "J") && !event.repeat) {
+        event.preventDefault();
+        setShowJournal((value) => !value);
+        return;
+      }
+
+      if (activeNode?.kind === "choice") {
+        const optionIndex = Number(event.key) - 1;
+        if (Number.isInteger(optionIndex) && optionIndex >= 0 && optionIndex < activeNode.options.length) {
+          event.preventDefault();
+          handleChoose(optionIndex);
+        }
+        return;
+      }
+
+      if (event.key === "Enter" && (activeNode?.kind === "dialogue" || activeNode?.kind === "checkResult")) {
+        event.preventDefault();
+        handleContinue();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeNode, handleChoose, handleContinue]);
+
   const questSummaries = useMemo(
     () =>
       Object.values(content.quests)
@@ -296,6 +329,7 @@ export function GameClient() {
           <p className="mt-1 text-sm text-foam/80">
             第 {state.clock.day} 日・{PHASE_LABELS[state.clock.phase]}・{SEASON_LABELS[state.clock.season]}季
           </p>
+          <p className="game-hotkey-hint">快捷鍵：J 切換日誌／Enter 繼續／1-9 選項</p>
         </div>
         <div className="game-stat-row">
           {Object.entries(STAT_LABELS).map(([stat, label]) => (
@@ -306,7 +340,7 @@ export function GameClient() {
           ))}
         </div>
         <div className="flex flex-wrap gap-2">
-          <button className="btn-ghost" onClick={() => setShowJournal((v) => !v)}>
+          <button className="btn-ghost" onClick={() => setShowJournal((v) => !v)} title="快捷鍵 J">
             {showJournal ? "收起任務" : "展開任務"}
           </button>
           <button className="btn-ghost" onClick={handleNewGame}>
@@ -384,7 +418,11 @@ export function GameClient() {
             onWait={handleWait}
           />
 
-          {notice && <section className="panel notice-banner">{notice}</section>}
+          {notice && (
+            <section className="panel notice-banner" role="status" aria-live="polite">
+              {notice}
+            </section>
+          )}
 
           {activeNode ? (
             <section className="panel dialogue-panel">
@@ -393,7 +431,7 @@ export function GameClient() {
               {activeNode.kind === "dialogue" && activeSpeaker && (
                 <div className="dialogue-layout">
                   <SpeakerPortraitCard speaker={activeSpeaker} />
-                  <div className="dialogue-bubble" key={`${activeNode.speaker}:${activeNode.text}`}>
+                  <div className="dialogue-bubble" key={`${activeNode.speaker}:${activeNode.text}`} role="status" aria-live="polite">
                     <p className="dialogue-speaker" style={{ color: activeSpeaker.accentColor }}>
                       {activeNode.speaker}
                     </p>
@@ -406,7 +444,7 @@ export function GameClient() {
               )}
 
               {activeNode.kind === "checkResult" && (
-                <div className="dialogue-bubble system-bubble">
+                <div className="dialogue-bubble system-bubble" role="status" aria-live="polite">
                   <p className="dialogue-speaker">
                     {STAT_LABELS[activeNode.stat]}判定・門檻 {activeNode.difficulty}
                   </p>
@@ -424,8 +462,9 @@ export function GameClient() {
                   <p className="dialogue-speaker">你的選擇</p>
                   <p className="dialogue-text">{activeNode.prompt}</p>
                   <div className="choice-grid">
-                    {activeNode.options.map((opt) => (
+                    {activeNode.options.map((opt, choiceIndex) => (
                       <button key={opt.index} className="btn-ghost choice-btn" onClick={() => handleChoose(opt.index)}>
+                        <span className="choice-shortcut">{choiceIndex + 1}.</span>
                         {opt.label}
                       </button>
                     ))}

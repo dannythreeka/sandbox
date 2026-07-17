@@ -68,4 +68,35 @@ export const QUESTS: Record<string, Quest> = {
     ],
     rewards: {},
   },
+  "quest.side_supply_line": {
+    id: "quest.side_supply_line",
+    kind: "SIDE",
+    title: "商會補給線",
+    giver: "npc.sera",
+    precondition: {
+      kind: "and",
+      all: [
+        { kind: "flag", flag: "flag.first_trade_done", value: true },
+        { kind: "flag", flag: "flag.crew_assembled", value: true },
+      ],
+    },
+    objectives: [
+      {
+        id: "obj.sign_supply_contract",
+        description: "在中央市場簽下第一份穩定補給單",
+        completeWhen: { kind: "flag", flag: "flag.supply_contract_signed", value: true },
+      },
+      {
+        id: "obj.finish_crew_drill",
+        description: "在酒館完成一次夜間班底演練",
+        completeWhen: { kind: "flag", flag: "flag.crew_drill_done", value: true },
+      },
+      {
+        id: "obj.secure_perlan_convoy",
+        description: "護送佩爾蘭補給船隊安全返港",
+        completeWhen: { kind: "flag", flag: "flag.perlan_convoy_secured", value: true },
+      },
+    ],
+    rewards: {},
+  },
 };

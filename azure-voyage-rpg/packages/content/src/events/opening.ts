@@ -85,4 +85,36 @@ export const OPENING_EVENTS: Record<string, GameEvent> = {
       },
     ],
   },
+  "event.harbor_office.risk_bulletin": {
+    id: "event.harbor_office.risk_bulletin",
+    precondition: {
+      kind: "and",
+      all: [
+        { kind: "flag", flag: "flag.game_started", value: true },
+        { kind: "flag", flag: "flag.first_trade_done", value: true },
+      ],
+    },
+    weight: 35,
+    once: false,
+    cooldownDays: 1,
+    entryNodeId: "n1",
+    nodes: [
+      {
+        kind: "dialogue",
+        id: "n1",
+        speaker: "公告欄",
+        text: "你發現新貼上的航運告示：『三日內完成物資配送的商會，將獲得下一輪港務靠泊優先權。』旁邊有人補註：『晚到一天，保費翻倍。』",
+        goto: "n2",
+      },
+      {
+        kind: "effect",
+        id: "n2",
+        effect: {
+          setFlags: ["flag.risk_bulletin_seen"],
+          worldState: [{ path: "crimsonThreat", delta: 1 }],
+        },
+        goto: "END",
+      },
+    ],
+  },
 };

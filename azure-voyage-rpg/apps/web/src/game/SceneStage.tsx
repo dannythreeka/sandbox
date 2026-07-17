@@ -173,6 +173,8 @@ export function SceneStage({
                   style={{ left: `${position.x}%`, top: `${position.y}%` }}
                   onClick={() => onInteract(hotspot.id)}
                   disabled={!!activeNode}
+                  title={hotspot.label}
+                  aria-label={`互動：${hotspot.label}`}
                 >
                   <span className="scene-hotspot-ping" />
                   <span className="scene-hotspot-label">{hotspot.label}</span>

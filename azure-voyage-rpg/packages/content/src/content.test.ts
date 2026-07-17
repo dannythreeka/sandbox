@@ -104,8 +104,50 @@ describe("main quest chain playthrough (favorable rng)", () => {
     expect(engine.state.inventory).toContain("item.perlan_salt");
     expect(engine.state.reputation["area.perlan"]).toBe(10);
 
-    // ── 主線任務目標此刻應全數判定為完成 ──
-    for (const questId of ["quest.ch1_first_trade", "quest.ch2_crew", "quest.ch3_first_battle", "quest.side_perlan"]) {
+    // ── P0/P1 內容循環：市場補給單 → 酒館演練 → 佩爾蘭船隊護送 ──
+    engine.advanceTime(2); // DUSK -> NIGHT -> DAWN（市場開門）
+    engine.travelTo("scene.aurelia.market");
+    node = engine.interact("hotspot.market.stalls");
+    expect(node?.kind).toBe("dialogue");
+    node = drain(engine);
+    expect(node.kind).toBe("choice");
+    node = engine.choose(1); // 走高價風險單（trade check）
+    expect(node.kind).toBe("checkResult");
+    node = drain(engine);
+    expect(node.kind).toBe("end");
+    expect(engine.state.flags).toContain("flag.supply_contract_signed");
+
+    engine.advanceTime(1); // DAY -> DUSK（酒館開門）
+    engine.travelTo("scene.aurelia.tavern");
+    node = engine.interact("hotspot.tavern.corner_table");
+    expect(node?.kind).toBe("dialogue");
+    node = drain(engine);
+    expect(node.kind).toBe("choice");
+    node = engine.choose(0); // 砲位協同演練（combat check）
+    expect(node.kind).toBe("checkResult");
+    node = drain(engine);
+    expect(node.kind).toBe("end");
+    expect(engine.state.flags).toContain("flag.crew_drill_done");
+
+    engine.travelTo("scene.perlan.docks");
+    node = engine.interact("hotspot.perlan.old_fisherman");
+    expect(node?.kind).toBe("dialogue");
+    node = drain(engine);
+    expect(node.kind).toBe("choice");
+    node = engine.choose(0); // 親自護送（nav check）
+    expect(node.kind).toBe("checkResult");
+    node = drain(engine);
+    expect(node.kind).toBe("end");
+    expect(engine.state.flags).toContain("flag.perlan_convoy_secured");
+
+    // ── 主線 + P1 支線任務目標此刻應全數判定為完成 ──
+    for (const questId of [
+      "quest.ch1_first_trade",
+      "quest.ch2_crew",
+      "quest.ch3_first_battle",
+      "quest.side_perlan",
+      "quest.side_supply_line",
+    ]) {
       const quest = content.quests[questId];
       for (const objective of quest.objectives) {
         expect(evaluateCondition(objective.completeWhen, engine.state)).toBe(true);

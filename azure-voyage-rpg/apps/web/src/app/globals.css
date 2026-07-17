@@ -1357,3 +1357,45 @@ body {
     bottom: 1rem;
   }
 }
+
+.game-hotkey-hint {
+  @apply mt-2 text-xs tracking-[0.08em] text-foam/60;
+}
+
+.choice-btn {
+  @apply flex items-center gap-2;
+}
+
+.choice-shortcut {
+  @apply inline-flex min-w-5 items-center justify-center rounded-md border border-foam/20 bg-abyss/45 px-1.5 py-0.5 text-xs font-semibold text-gold;
+}
+
+.btn:focus-visible,
+.btn-ghost:focus-visible,
+.scene-hotspot:focus-visible,
+.route-area-node:focus-visible,
+.route-scene-node:focus-visible,
+.choice-btn:focus-visible {
+  outline: 2px solid rgba(246, 207, 125, 0.9);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .scene-stage-backdrop,
+  .scene-gallery-image,
+  .speaker-portrait-image,
+  .battle-cinematic-backdrop,
+  .scene-stage-weather-backdrop,
+  .scene-stage-weather-fallback {
+    transform: none !important;
+  }
+}
