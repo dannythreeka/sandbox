@@ -93,4 +93,87 @@ export const PERLAN_EVENTS: Record<string, GameEvent> = {
       },
     ],
   },
+  "event.perlan.supply_convoy": {
+    id: "event.perlan.supply_convoy",
+    precondition: {
+      kind: "and",
+      all: [
+        { kind: "flag", flag: "flag.perlan_quest_completed", value: true },
+        { kind: "flag", flag: "flag.first_battle_done", value: true },
+      ],
+    },
+    weight: 70,
+    once: false,
+    cooldownDays: 2,
+    entryNodeId: "n1",
+    nodes: [
+      {
+        kind: "dialogue",
+        id: "n1",
+        speaker: "圖克·佩蘭",
+        text: "「今晚有兩條小艇要把鹽送過外海岬角，」圖克壓低聲音，「那段水路最近不太平，你要不要帶人壓一程？」",
+        goto: "n2",
+      },
+      {
+        kind: "choice",
+        id: "n2",
+        prompt: "你打算怎麼處理這次護送？",
+        options: [
+          { label: "親自帶船護送，走外海快線", goto: "check_nav" },
+          { label: "讓布拉姆帶隊，自己留港統籌補給", goto: "check_lead" },
+        ],
+      },
+      {
+        kind: "skillCheck",
+        id: "check_nav",
+        stat: "nav",
+        difficulty: 23,
+        onSuccess: "n_success",
+        onFailure: "n_fail",
+      },
+      {
+        kind: "skillCheck",
+        id: "check_lead",
+        stat: "lead",
+        difficulty: 23,
+        onSuccess: "n_success",
+        onFailure: "n_fail",
+      },
+      {
+        kind: "dialogue",
+        id: "n_success",
+        speaker: "旁白",
+        text: "整支船隊在天亮前安全返港，佩爾蘭碼頭久違地亮起了慶祝的燈。鎏金天秤的採購代理也在場，默默記下了你的名字。",
+        goto: "n_success_effect",
+      },
+      {
+        kind: "effect",
+        id: "n_success_effect",
+        effect: {
+          setFlags: ["flag.perlan_convoy_secured"],
+          reputation: [{ area: "area.perlan", delta: 4 }, { area: "area.aurelia", delta: 2 }],
+          worldState: [{ path: "crimsonThreat", delta: -1 }],
+          advanceTime: 1,
+        },
+        goto: "END",
+      },
+      {
+        kind: "dialogue",
+        id: "n_fail",
+        speaker: "旁白",
+        text: "船隊還是回來了，但丟了半船貨，還有兩名水手受了傷。圖克沒有責怪你，只是把帳本往後翻了一頁。",
+        goto: "n_fail_effect",
+      },
+      {
+        kind: "effect",
+        id: "n_fail_effect",
+        effect: {
+          setFlags: ["flag.perlan_convoy_secured"],
+          worldState: [{ path: "crimsonThreat", delta: 2 }],
+          advanceTime: 1,
+        },
+        goto: "END",
+      },
+    ],
+  },
 };

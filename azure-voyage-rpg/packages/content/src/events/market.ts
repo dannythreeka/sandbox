@@ -53,6 +53,99 @@ export const MARKET_EVENTS: Record<string, GameEvent> = {
       },
     ],
   },
+  "event.market.bulk_contract": {
+    id: "event.market.bulk_contract",
+    precondition: {
+      kind: "and",
+      all: [
+        { kind: "flag", flag: "flag.first_trade_done", value: true },
+        { kind: "flag", flag: "flag.crew_assembled", value: true },
+      ],
+    },
+    weight: 70,
+    once: false,
+    cooldownDays: 1,
+    entryNodeId: "n1",
+    nodes: [
+      {
+        kind: "dialogue",
+        id: "n1",
+        speaker: "市場掮客",
+        text: "「來得正好，」掮客把一張急單推過來，「兩批補給今晚就要出港。你要接穩單，還是賭高價那批？」",
+        goto: "n2",
+      },
+      {
+        kind: "choice",
+        id: "n2",
+        prompt: "你要怎麼接這份急單？",
+        options: [
+          { label: "接穩定補給線，利潤薄但風險低", goto: "n_safe_effect" },
+          { label: "吃下高價風險單，試著賺一筆大的", goto: "check_trade" },
+        ],
+      },
+      {
+        kind: "effect",
+        id: "n_safe_effect",
+        effect: {
+          setFlags: ["flag.supply_contract_signed"],
+          reputation: [{ area: "area.aurelia", delta: 3 }],
+          worldState: [{ path: "crimsonThreat", delta: -1 }],
+          advanceTime: 1,
+        },
+        goto: "n_safe_close",
+      },
+      {
+        kind: "dialogue",
+        id: "n_safe_close",
+        speaker: "賽菈",
+        text: "「錢少一點，但帳面很乾淨，」賽菈點頭，「我們先把航線跑穩，商會才站得住。」",
+        goto: "END",
+      },
+      {
+        kind: "skillCheck",
+        id: "check_trade",
+        stat: "trade",
+        difficulty: 26,
+        onSuccess: "n_risk_win",
+        onFailure: "n_risk_fail",
+      },
+      {
+        kind: "dialogue",
+        id: "n_risk_win",
+        speaker: "旁白",
+        text: "你在最後一刻談下有利條款，貨單價格被你抬高了一截，港邊商販對晨汐商會另眼相看。",
+        goto: "n_risk_win_effect",
+      },
+      {
+        kind: "effect",
+        id: "n_risk_win_effect",
+        effect: {
+          setFlags: ["flag.supply_contract_signed"],
+          reputation: [{ area: "area.aurelia", delta: 4 }],
+          worldState: [{ path: "crimsonThreat", delta: 1 }],
+          advanceTime: 1,
+        },
+        goto: "END",
+      },
+      {
+        kind: "dialogue",
+        id: "n_risk_fail",
+        speaker: "旁白",
+        text: "你沒能壓住對方條件，高價單的保費和延誤罰金反咬一口。這趟不至於致命，卻讓你記得貪快的代價。",
+        goto: "n_risk_fail_effect",
+      },
+      {
+        kind: "effect",
+        id: "n_risk_fail_effect",
+        effect: {
+          setFlags: ["flag.supply_contract_signed"],
+          worldState: [{ path: "crimsonThreat", delta: 2 }],
+          advanceTime: 1,
+        },
+        goto: "END",
+      },
+    ],
+  },
   "event.market.crimson_scout": {
     id: "event.market.crimson_scout",
     precondition: {

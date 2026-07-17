@@ -32,7 +32,7 @@ export const AURELIA_SCENES: Record<string, Scene> = {
       {
         id: "hotspot.harbor_office.notice_board",
         label: "公告欄",
-        eventPool: ["event.harbor_office.rumor"],
+        eventPool: ["event.harbor_office.rumor", "event.harbor_office.risk_bulletin"],
         visibleIf: { kind: "flag", flag: "flag.game_started", value: true },
         position: { x: 74, y: 38 },
       },
@@ -70,7 +70,7 @@ export const AURELIA_SCENES: Record<string, Scene> = {
       {
         id: "hotspot.tavern.corner_table",
         label: "角落的桌子",
-        eventPool: ["event.tavern.crimson_rumor"],
+        eventPool: ["event.tavern.crimson_rumor", "event.tavern.crew_drill"],
         visibleIf: { kind: "flag", flag: "flag.game_started", value: true },
         position: { x: 72, y: 58 },
       },
@@ -101,7 +101,7 @@ export const AURELIA_SCENES: Record<string, Scene> = {
       {
         id: "hotspot.market.stalls",
         label: "貨攤",
-        eventPool: ["event.market.first_trade"],
+        eventPool: ["event.market.first_trade", "event.market.bulk_contract"],
         visibleIf: { kind: "flag", flag: "flag.game_started", value: true },
         position: { x: 34, y: 67 },
       },

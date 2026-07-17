@@ -85,8 +85,38 @@ export const OPENING_EVENTS: Record<string, GameEvent> = {
       },
     ],
   },
-  // 第一部尾聲（docs/28 第一部收束）：頂住緋帆團後回港務廳向馬瑟斯覆命。
-  // 同時清楚告訴玩家「目前的原型內容到這裡」，避免劇情突然停住讓人以為卡關。
+  "event.harbor_office.risk_bulletin": {
+    id: "event.harbor_office.risk_bulletin",
+    precondition: {
+      kind: "and",
+      all: [
+        { kind: "flag", flag: "flag.game_started", value: true },
+        { kind: "flag", flag: "flag.first_trade_done", value: true },
+      ],
+    },
+    weight: 35,
+    once: false,
+    cooldownDays: 1,
+    entryNodeId: "n1",
+    nodes: [
+      {
+        kind: "dialogue",
+        id: "n1",
+        speaker: "公告欄",
+        text: "你發現新貼上的航運告示：『三日內完成物資配送的商會，將獲得下一輪港務靠泊優先權。』旁邊有人補註：『晚到一天，保費翻倍。』",
+        goto: "n2",
+      },
+      {
+        kind: "effect",
+        id: "n2",
+        effect: {
+          setFlags: ["flag.risk_bulletin_seen"],
+          worldState: [{ path: "crimsonThreat", delta: 1 }],
+        },
+        goto: "END",
+      },
+    ],
+  },
   "event.harbor_office.part_one_end": {
     id: "event.harbor_office.part_one_end",
     precondition: {
@@ -96,7 +126,7 @@ export const OPENING_EVENTS: Record<string, GameEvent> = {
         { kind: "not", cond: { kind: "flag", flag: "flag.part_one_complete", value: true } },
       ],
     },
-    weight: 200, // 蓋過同熱點的開場事件（開場 once 已完成，這裡保險起見給高權重）
+    weight: 200,
     once: true,
     entryNodeId: "n1",
     nodes: [

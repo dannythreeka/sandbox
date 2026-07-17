@@ -25,7 +25,7 @@ export const PERLAN_SCENES: Record<string, Scene> = {
       {
         id: "hotspot.perlan.old_fisherman",
         label: "老漁夫圖克",
-        eventPool: ["event.perlan.meet_tuk", "event.perlan.saltfield_reopened"],
+        eventPool: ["event.perlan.meet_tuk", "event.perlan.saltfield_reopened", "event.perlan.supply_convoy"],
         position: { x: 62, y: 66 },
       },
     ],

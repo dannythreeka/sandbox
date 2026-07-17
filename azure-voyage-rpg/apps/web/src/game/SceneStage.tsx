@@ -174,6 +174,8 @@ export function SceneStage({
                     style={{ left: `${position.x}%`, top: `${position.y}%` }}
                     onClick={() => onInteract(hotspot.id)}
                     disabled={!!activeNode}
+                    title={hotspot.label}
+                    aria-label={`互動：${hotspot.label}`}
                   >
                     <span className="scene-hotspot-ping" />
                     <span className="scene-hotspot-label">{hotspot.label}</span>
@@ -181,8 +183,6 @@ export function SceneStage({
                 );
               })}
             </div>
-            {/* 等待鍵在場景開放時也要能按——否則玩家會卡在「所有可去的場景都開著、
-                但需要推進到別的時段才能觸發下一步」的死結（例如黃昏想去白晝的市場）。 */}
             <div className="scene-stage-wait">
               <button className="btn-ghost" onClick={onWait} disabled={!!activeNode}>
                 等待一段時間（推進時段）
