@@ -13,6 +13,7 @@ import {
 } from "@azure-voyage-rpg/engine";
 import { AZURE_VOYAGE_RPG_CONTENT as content, createStartState } from "@azure-voyage-rpg/content";
 import { clearSave, loadSave, persistSave } from "@/lib/save";
+import { reportError, trackEvent } from "@/lib/telemetry";
 import { GameArt } from "@/game/GameArt";
 import { SceneStage } from "@/game/SceneStage";
 import { AudioDock } from "@/game/AudioDock";
@@ -107,9 +108,13 @@ function createSpeakerVisualIndex() {
   return index;
 }
 
-function makeEngine(): RpgEngine {
-  const saved = loadSave();
-  return new RpgEngine(content, saved ?? createStartState());
+function bootstrapGame() {
+  const loaded = loadSave();
+  return {
+    engine: new RpgEngine(content, loaded.state ?? createStartState()),
+    notice: loaded.notice,
+    saveStatus: loaded.status,
+  };
 }
 
 function monogram(name: string) {
@@ -131,9 +136,10 @@ function isBattleNarrativeText(text: string) {
 }
 
 export function GameClient() {
-  const [engine, setEngine] = useState<RpgEngine>(() => makeEngine());
+  const [bootstrap] = useState(bootstrapGame);
+  const [engine, setEngine] = useState<RpgEngine>(() => bootstrap.engine);
   const [activeNode, setActiveNode] = useState<PlayNode | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(() => bootstrap.notice);
   const [showJournal, setShowJournal] = useState(true);
   const [travelTransition, setTravelTransition] = useState<TravelTransition | null>(null);
 
@@ -152,32 +158,80 @@ export function GameClient() {
     setNotice(null);
     const node = engine.interact(hotspotId);
     if (!node) {
+      trackEvent("gameplay.interact.miss", {
+        hotspotId,
+        sceneId: engine.state.currentSceneId,
+        day: engine.state.clock.day,
+        phase: engine.state.clock.phase,
+      });
       setNotice("這個角落暫時沒有新的事件，但海風裡像還藏著下一段故事。");
       return;
     }
+    trackEvent("gameplay.interact.hit", {
+      hotspotId,
+      sceneId: engine.state.currentSceneId,
+      day: engine.state.clock.day,
+      phase: engine.state.clock.phase,
+      nextNodeKind: node.kind,
+    });
     settle(node);
   }
 
   function handleContinue() {
-    settle(engine.continue());
+    const beforeKind = activeNode?.kind ?? "idle";
+    const nextNode = engine.continue();
+    trackEvent("gameplay.continue", {
+      fromNodeKind: beforeKind,
+      toNodeKind: nextNode.kind,
+      sceneId: engine.state.currentSceneId,
+      day: engine.state.clock.day,
+    });
+    settle(nextNode);
   }
 
   function handleChoose(index: number) {
-    settle(engine.choose(index));
+    const nextNode = engine.choose(index);
+    trackEvent("gameplay.choice.select", {
+      choiceIndex: index,
+      toNodeKind: nextNode.kind,
+      sceneId: engine.state.currentSceneId,
+      day: engine.state.clock.day,
+    });
+    settle(nextNode);
   }
 
   function handleWait() {
     setNotice(null);
+    const beforePhase = engine.state.clock.phase;
+    const beforeDay = engine.state.clock.day;
     engine.advanceTime(1);
+    trackEvent("gameplay.wait.advance_time", {
+      fromDay: beforeDay,
+      fromPhase: beforePhase,
+      toDay: engine.state.clock.day,
+      toPhase: engine.state.clock.phase,
+      sceneId: engine.state.currentSceneId,
+    });
     sync();
   }
 
   function handleTravel(sceneId: string) {
     setNotice(null);
     try {
+      const fromSceneId = engine.state.currentSceneId;
       engine.travelTo(sceneId);
+      trackEvent("gameplay.travel.scene", {
+        fromSceneId,
+        toSceneId: sceneId,
+        day: engine.state.clock.day,
+        phase: engine.state.clock.phase,
+      });
       sync();
     } catch (err) {
+      reportError("gameplay.travel.scene_failed", err, {
+        fromSceneId: engine.state.currentSceneId,
+        toSceneId: sceneId,
+      });
       setNotice(err instanceof Error ? err.message : "現在還不能去那裡。");
     }
   }
@@ -187,15 +241,32 @@ export function GameClient() {
     const target = content.areas[areaId];
     const entryScene = target.scenes[0];
     try {
+      const fromAreaId = content.scenes[engine.state.currentSceneId]?.areaId ?? "";
       engine.travelTo(entryScene);
+      trackEvent("gameplay.travel.area", {
+        fromAreaId,
+        toAreaId: areaId,
+        toSceneId: entryScene,
+        day: engine.state.clock.day,
+        phase: engine.state.clock.phase,
+      });
       sync();
     } catch (err) {
+      reportError("gameplay.travel.area_failed", err, {
+        toAreaId: areaId,
+        toSceneId: entryScene,
+      });
       setNotice(err instanceof Error ? err.message : "現在還不能去那裡。");
     }
   }
 
   function handleNewGame() {
     if (!window.confirm("要放棄目前的存檔，重新開始一輪新旅程嗎？")) return;
+    trackEvent("gameplay.new_game.confirmed", {
+      previousPlaythrough: engine.state.playthrough,
+      previousDay: engine.state.clock.day,
+      previousSceneId: engine.state.currentSceneId,
+    });
     clearSave();
     const fresh = new RpgEngine(content, createStartState());
     setEngine(fresh);
@@ -215,6 +286,15 @@ export function GameClient() {
   const previousSceneIdRef = useRef(state.currentSceneId);
 
   useEffect(() => {
+    trackEvent("session.start", {
+      sceneId: bootstrap.engine.state.currentSceneId,
+      day: bootstrap.engine.state.clock.day,
+      phase: bootstrap.engine.state.clock.phase,
+      saveStatus: bootstrap.saveStatus,
+    });
+  }, [bootstrap]);
+
+  useEffect(() => {
     const previousSceneId = previousSceneIdRef.current;
     if (previousSceneId === state.currentSceneId) return;
 
@@ -230,6 +310,14 @@ export function GameClient() {
           : scene.name;
 
     setTravelTransition({ label, kind });
+    trackEvent("gameplay.transition", {
+      kind,
+      label,
+      fromSceneId: previousSceneId,
+      toSceneId: state.currentSceneId,
+      day: state.clock.day,
+      phase: state.clock.phase,
+    });
     previousSceneIdRef.current = state.currentSceneId;
 
     const timer = window.setTimeout(() => setTravelTransition(null), 1400);
