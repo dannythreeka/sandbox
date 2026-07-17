@@ -131,4 +131,87 @@ export const TAVERN_EVENTS: Record<string, GameEvent> = {
       },
     ],
   },
+  "event.tavern.crew_drill": {
+    id: "event.tavern.crew_drill",
+    precondition: {
+      kind: "and",
+      all: [
+        { kind: "flag", flag: "flag.crew_assembled", value: true },
+        { kind: "flag", flag: "flag.first_battle_done", value: true },
+      ],
+    },
+    weight: 80,
+    once: false,
+    cooldownDays: 1,
+    entryNodeId: "n1",
+    nodes: [
+      {
+        kind: "dialogue",
+        id: "n1",
+        speaker: "布拉姆",
+        text: "「下一次碰上緋帆團，別想靠運氣。」布拉姆把木杯往桌上一放，「今晚先演練一輪登船接戰流程。」",
+        goto: "n2",
+      },
+      {
+        kind: "choice",
+        id: "n2",
+        prompt: "你要把訓練重點放在哪？",
+        options: [
+          { label: "砲位協同與換裝節奏", goto: "check_combat" },
+          { label: "夜航變陣與口令同步", goto: "check_lead" },
+        ],
+      },
+      {
+        kind: "skillCheck",
+        id: "check_combat",
+        stat: "combat",
+        difficulty: 24,
+        onSuccess: "n_success",
+        onFailure: "n_fail",
+      },
+      {
+        kind: "skillCheck",
+        id: "check_lead",
+        stat: "lead",
+        difficulty: 22,
+        onSuccess: "n_success",
+        onFailure: "n_fail",
+      },
+      {
+        kind: "dialogue",
+        id: "n_success",
+        speaker: "賽菈",
+        text: "「這次節奏對了，」賽菈把演練紀錄遞給你，「照這樣練下去，下次損失會小很多。」",
+        goto: "n_success_effect",
+      },
+      {
+        kind: "effect",
+        id: "n_success_effect",
+        effect: {
+          setFlags: ["flag.crew_drill_done"],
+          reputation: [{ area: "area.aurelia", delta: 2 }],
+          worldState: [{ path: "crimsonThreat", delta: -1 }],
+          advanceTime: 1,
+        },
+        goto: "END",
+      },
+      {
+        kind: "dialogue",
+        id: "n_fail",
+        speaker: "布拉姆",
+        text: "「動作還是亂，」布拉姆皺眉，「至少你們知道問題在哪。明晚再來一次。」",
+        goto: "n_fail_effect",
+      },
+      {
+        kind: "effect",
+        id: "n_fail_effect",
+        effect: {
+          setFlags: ["flag.crew_drill_done"],
+          worldState: [{ path: "crimsonThreat", delta: 1 }],
+          advanceTime: 1,
+        },
+        goto: "END",
+      },
+    ],
+  },
 };
