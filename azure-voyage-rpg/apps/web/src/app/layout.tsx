@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { RuntimeMonitor } from "./RuntimeMonitor";
+import { GameErrorBoundary } from "./GameErrorBoundary";
 
 export const metadata: Metadata = {
   title: "蒼瀾航路：晨汐紀事",
@@ -12,7 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="zh-Hant">
       <body>
         <RuntimeMonitor />
-        {children}
+        <GameErrorBoundary>{children}</GameErrorBoundary>
       </body>
     </html>
   );

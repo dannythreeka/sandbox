@@ -18,6 +18,7 @@ import { GameArt } from "@/game/GameArt";
 import { SceneStage } from "@/game/SceneStage";
 import { AudioDock } from "@/game/AudioDock";
 import { BattleCinematic } from "@/game/BattleCinematic";
+import { OnboardingOverlay } from "@/game/OnboardingOverlay";
 
 const STAT_LABELS: Record<CaptainStat, string> = {
   lead: "統率",
@@ -420,6 +421,7 @@ export function GameClient() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-6 md:px-6">
+      <OnboardingOverlay />
       <header className="panel game-banner">
         <div>
           <p className="text-xs uppercase tracking-[0.35em] text-foam/60">Azure Voyage RPG</p>
