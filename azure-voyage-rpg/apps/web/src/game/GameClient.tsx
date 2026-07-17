@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   RpgEngine,
+  CAPTAIN_STATS,
   evaluateCondition,
   type ArtCategory,
   type CaptainStat,
@@ -19,6 +20,9 @@ import { SceneStage } from "@/game/SceneStage";
 import { AudioDock } from "@/game/AudioDock";
 import { BattleCinematic } from "@/game/BattleCinematic";
 import { OnboardingOverlay } from "@/game/OnboardingOverlay";
+import { ConfirmModal } from "@/game/ConfirmModal";
+import { CaptainNameModal } from "@/game/CaptainNameModal";
+import { AchievementToast } from "@/game/AchievementToast";
 
 const STAT_LABELS: Record<CaptainStat, string> = {
   lead: "統率",
@@ -109,12 +113,22 @@ function createSpeakerVisualIndex() {
   return index;
 }
 
+const ACHIEVEMENT_FLAGS: Record<string, string> = {
+  'flag.recruited_bram': '⚓ 新夥伴：布拉姆·霍特加入船隊',
+  'flag.recruited_sera': '📒 新夥伴：賽菈·凡德加入船隊',
+  'flag.crew_assembled': '🚢 船隊集結完畢！可以出海了',
+  'flag.first_battle_done': '⚔️ 首戰告捷！緋帆團吃了一次虧',
+  'flag.part_one_complete': '🏆 第一部完結：晨汐商會的名字開始流傳',
+};
+
 function bootstrapGame() {
   const loaded = loadSave();
+  const engine = new RpgEngine(content, loaded.state ?? createStartState());
   return {
-    engine: new RpgEngine(content, loaded.state ?? createStartState()),
+    engine,
     notice: loaded.notice,
     saveStatus: loaded.status,
+    captainName: engine.state.captainName ?? '',
   };
 }
 
@@ -143,6 +157,13 @@ export function GameClient() {
   const [notice, setNotice] = useState<string | null>(() => bootstrap.notice);
   const [showJournal, setShowJournal] = useState(true);
   const [travelTransition, setTravelTransition] = useState<TravelTransition | null>(null);
+  const [captainName, setCaptainName] = useState<string>(() => bootstrap.captainName);
+  const [showConfirmNew, setShowConfirmNew] = useState(false);
+  const [showCaptainNameModal, setShowCaptainNameModal] = useState(false);
+  const [pendingAchievements, setPendingAchievements] = useState<string[]>([]);
+  const [statDeltas, setStatDeltas] = useState<Partial<Record<CaptainStat, number>>>({});
+  const prevFlagsRef = useRef(engine.state.flags);
+  const prevStatsRef = useRef({ ...engine.state.captainStats });
 
   const [, setVersion] = useState(0);
   function sync() {
@@ -262,19 +283,31 @@ export function GameClient() {
   }
 
   function handleNewGame() {
-    if (!window.confirm("要放棄目前的存檔，重新開始一輪新旅程嗎？")) return;
+    setShowConfirmNew(true);
+  }
+
+  function handleConfirmNewGame() {
+    setShowConfirmNew(false);
+    setShowCaptainNameModal(true);
+  }
+
+  function handleStartNewGame(name: string) {
     trackEvent("gameplay.new_game.confirmed", {
       previousPlaythrough: engine.state.playthrough,
       previousDay: engine.state.clock.day,
       previousSceneId: engine.state.currentSceneId,
     });
     clearSave();
-    const fresh = new RpgEngine(content, createStartState());
+    const fresh = new RpgEngine(content, createStartState({ captainName: name }));
+    setCaptainName(name);
     setEngine(fresh);
     setActiveNode(null);
     setNotice(null);
     persistSave(fresh.state);
     setVersion((v) => v + 1);
+    setShowCaptainNameModal(false);
+    prevFlagsRef.current = fresh.state.flags;
+    prevStatsRef.current = { ...fresh.state.captainStats };
   }
 
   const state = engine.state;
@@ -358,6 +391,31 @@ export function GameClient() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeNode, handleChoose, handleContinue]);
 
+  useEffect(() => {
+    const prev = prevFlagsRef.current;
+    const curr = state.flags;
+    const newFlags = curr.filter((f) => !prev.includes(f));
+    if (newFlags.length === 0) return;
+    prevFlagsRef.current = curr;
+    const toAdd = newFlags.filter((f) => ACHIEVEMENT_FLAGS[f]).map((f) => ACHIEVEMENT_FLAGS[f]);
+    if (toAdd.length > 0) setPendingAchievements((a) => [...a, ...toAdd]);
+  }, [state.flags]);
+
+  useEffect(() => {
+    const prev = prevStatsRef.current;
+    const curr = state.captainStats;
+    const deltas: Partial<Record<CaptainStat, number>> = {};
+    for (const s of CAPTAIN_STATS) {
+      const d = curr[s] - prev[s];
+      if (d !== 0) deltas[s] = d;
+    }
+    if (Object.keys(deltas).length === 0) return;
+    prevStatsRef.current = { ...curr };
+    setStatDeltas(deltas);
+    const timer = window.setTimeout(() => setStatDeltas({}), 1600);
+    return () => window.clearTimeout(timer);
+  }, [state.captainStats]);
+
   const questSummaries = useMemo(
     () =>
       Object.values(content.quests)
@@ -419,6 +477,19 @@ export function GameClient() {
     return null;
   }, [questSummaries]);
 
+  function getNextOpenPhaseLabel(): string | null {
+    if (!scene.timeGate?.phases?.length) return null;
+    const phaseOrder: GamePhase[] = ["DAWN", "DAY", "DUSK", "NIGHT"];
+    const phaseLabels: Record<GamePhase, string> = { DAWN: "黎明", DAY: "白晝", DUSK: "黃昏", NIGHT: "夜晚" };
+    const idx = phaseOrder.indexOf(state.clock.phase);
+    for (let i = 1; i <= 4; i++) {
+      const next = phaseOrder[(idx + i) % 4] as GamePhase;
+      if (scene.timeGate.phases.includes(next)) return phaseLabels[next];
+    }
+    return null;
+  }
+  const nextOpenPhaseLabel = getNextOpenPhaseLabel();
+
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-6 md:px-6">
       <OnboardingOverlay />
@@ -426,18 +497,29 @@ export function GameClient() {
         <div>
           <p className="text-xs uppercase tracking-[0.35em] text-foam/60">Azure Voyage RPG</p>
           <h1 className="text-2xl font-semibold text-gold">蒼瀾航路：晨汐紀事</h1>
+          {captainName && (
+            <p className="text-xs text-foam/70 mt-0.5">船長：{captainName}</p>
+          )}
           <p className="mt-1 text-sm text-foam/80">
             第 {state.clock.day} 日・{PHASE_LABELS[state.clock.phase]}・{SEASON_LABELS[state.clock.season]}季
           </p>
           <p className="game-hotkey-hint">快捷鍵：J 切換日誌／Enter 繼續／1-9 選項</p>
         </div>
         <div className="game-stat-row">
-          {Object.entries(STAT_LABELS).map(([stat, label]) => (
-            <div key={stat} className="game-stat-pill">
-              <span>{label}</span>
-              <strong>{state.captainStats[stat as CaptainStat]}</strong>
-            </div>
-          ))}
+          {Object.entries(STAT_LABELS).map(([stat, label]) => {
+            const delta = statDeltas[stat as CaptainStat];
+            return (
+              <div key={stat} className="game-stat-pill">
+                <span>{label}</span>
+                <strong>{state.captainStats[stat as CaptainStat]}</strong>
+                {delta !== undefined && (
+                  <span key={delta} className={`stat-delta ${delta > 0 ? 'is-positive' : 'is-negative'}`}>
+                    {delta > 0 ? `+${delta}` : `${delta}`}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
         <div className="flex flex-wrap gap-2">
           <button className="btn-ghost" onClick={() => setShowJournal((v) => !v)} title="快捷鍵 J">
@@ -543,7 +625,7 @@ export function GameClient() {
                   <SpeakerPortraitCard speaker={activeSpeaker} />
                   <div className="dialogue-bubble" key={`${activeNode.speaker}:${activeNode.text}`} role="status" aria-live="polite">
                     <p className="dialogue-speaker" style={{ color: activeSpeaker.accentColor }}>
-                      {activeNode.speaker}
+                      {activeNode.speaker === "你" && captainName ? captainName : activeNode.speaker}
                     </p>
                     <p className="dialogue-text">{activeNode.text}</p>
                     <button className="btn" onClick={handleContinue}>
@@ -554,12 +636,15 @@ export function GameClient() {
               )}
 
               {activeNode.kind === "checkResult" && (
-                <div className="dialogue-bubble system-bubble" role="status" aria-live="polite">
-                  <p className="dialogue-speaker">
-                    {STAT_LABELS[activeNode.stat]}判定・門檻 {activeNode.difficulty}
+                <div className={`dialogue-bubble system-bubble check-result-bubble ${activeNode.success ? 'is-success' : 'is-failure'}`} role="status" aria-live="polite">
+                  <div className="check-result-icon" aria-hidden="true">
+                    {activeNode.success ? '✅' : '❌'}
+                  </div>
+                  <p className="check-result-label">
+                    {STAT_LABELS[activeNode.stat]}判定・門檻 {activeNode.difficulty}・你的實力 {activeNode.playerValue}
                   </p>
                   <p className="dialogue-text">
-                    你的基礎實力是 {activeNode.playerValue}。{activeNode.success ? "這一步走得漂亮，局面穩住了。" : "這次沒能盡如人意，但故事還沒結束。"}
+                    {activeNode.success ? "這一步走得漂亮，局面穩住了。" : "這次沒能盡如人意，但故事還沒結束。"}
                   </p>
                   <button className="btn" onClick={handleContinue}>
                     繼續
@@ -586,7 +671,12 @@ export function GameClient() {
             <section className="panel idle-panel">
               {sceneOpen
                 ? "從場景中的發光節點開始互動。每次選擇都會推進你在琥珀灣的命運。"
-                : "這個場景現在尚未開放；你可以先等待，或切去同港口的其他場所。"}
+                : (
+                  <span>
+                    【{scene.name}】{scene.timeGate?.phases ? `${scene.timeGate.phases.map(p => ({ DAWN:'黎明', DAY:'白晝', DUSK:'黃昏', NIGHT:'夜晚' })[p]).join('／')}開放` : '目前封鎖'}
+                    {nextOpenPhaseLabel && <strong className="time-gate-next">{" "}下一開放時段：{nextOpenPhaseLabel}</strong>}
+                  </span>
+                )}
             </section>
           )}
 
@@ -638,7 +728,8 @@ export function GameClient() {
           />
 
           <section className="panel">
-            <h2 className="panel-title">視覺圖庫</h2>
+            <h2 className="panel-title">場景氛圍</h2>
+            <p className="text-xs text-foam/50 mb-2">當前場景的視覺情境</p>
             <div className="scene-gallery">
               {sceneMoodFrames.map((frame) => (
                 <article key={`${frame.category}:${frame.id}`} className="scene-gallery-card">
@@ -747,6 +838,23 @@ export function GameClient() {
           )}
         </aside>
       </div>
+      {showConfirmNew && (
+        <ConfirmModal
+          message="要放棄目前存檔，展開新旅程嗎？"
+          onConfirm={handleConfirmNewGame}
+          onCancel={() => setShowConfirmNew(false)}
+        />
+      )}
+      {showCaptainNameModal && (
+        <CaptainNameModal
+          onConfirm={handleStartNewGame}
+          onCancel={() => setShowCaptainNameModal(false)}
+        />
+      )}
+      <AchievementToast
+        achievements={pendingAchievements}
+        onClear={(msg) => setPendingAchievements((a) => a.filter((x) => x !== msg))}
+      />
     </div>
   );
 }

@@ -319,6 +319,7 @@ export interface SaveState {
   inventory: string[];
   playthrough: number;
   currentSceneId: string;
+  captainName?: string;
 }
 
 export function createInitialSaveState(opts: {
@@ -326,6 +327,7 @@ export function createInitialSaveState(opts: {
   startAreaId: string;
   startRegionId: string;
   captainStats?: Partial<Record<CaptainStat, number>>;
+  captainName?: string;
 }): SaveState {
   return {
     clock: { day: 1, phase: "DAWN", season: "SPRING" },
@@ -352,5 +354,6 @@ export function createInitialSaveState(opts: {
     inventory: [],
     playthrough: 1,
     currentSceneId: opts.startSceneId,
+    captainName: opts.captainName,
   };
 }

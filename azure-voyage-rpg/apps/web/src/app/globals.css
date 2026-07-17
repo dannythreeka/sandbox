@@ -1512,3 +1512,152 @@ body {
 .onboarding-actions {
   @apply mt-6 flex items-center justify-center gap-3;
 }
+
+/* ── Confirm Modal ── */
+.confirm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(6, 12, 24, 0.75);
+  backdrop-filter: blur(6px);
+  animation: dialogue-rise 240ms ease-out;
+}
+
+.confirm-modal-card {
+  max-width: 22rem;
+  width: 100%;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(246, 207, 125, 0.25);
+  background: linear-gradient(135deg, rgba(10, 22, 38, 0.97) 0%, rgba(17, 32, 52, 0.99) 100%);
+  padding: 2rem 1.75rem 1.75rem;
+  text-align: center;
+}
+
+.confirm-modal-kicker {
+  @apply text-xs uppercase tracking-[0.3em] text-foam/55;
+}
+
+.confirm-modal-title {
+  @apply mt-2 text-base font-semibold text-gold;
+}
+
+.confirm-modal-message {
+  @apply text-sm leading-6 text-foam/85;
+}
+
+.confirm-modal-actions {
+  @apply mt-5 flex items-center justify-center gap-3;
+}
+
+.btn-danger {
+  @apply btn;
+  background: linear-gradient(135deg, #c0392b 0%, #7b1a13 100%);
+  border-color: rgba(192, 57, 43, 0.6);
+}
+
+.btn-danger:hover {
+  background: linear-gradient(135deg, #d44637 0%, #8f2019 100%);
+}
+
+/* ── Captain Name Modal ── */
+.captain-name-form {
+  @apply mt-4 space-y-3;
+}
+
+.captain-name-input {
+  @apply w-full rounded-xl border border-foam/20 bg-abyss/60 px-4 py-3 text-center text-lg font-semibold text-gold placeholder-foam/30 outline-none;
+  transition: border-color 200ms ease;
+}
+
+.captain-name-input:focus {
+  border-color: rgba(246, 207, 125, 0.55);
+  box-shadow: 0 0 0 3px rgba(246, 207, 125, 0.12);
+}
+
+.captain-name-hint {
+  @apply text-xs text-foam/45;
+}
+
+/* ── Achievement Toast ── */
+.achievement-toast-stack {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  pointer-events: none;
+}
+
+.achievement-toast {
+  @apply rounded-full border border-gold/40 bg-abyss/90 px-5 py-2.5 text-sm font-medium text-gold;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(246, 207, 125, 0.15);
+  animation: achievement-in 400ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes achievement-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.9); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Check Result UX ── */
+.check-result-bubble {
+  text-align: center;
+}
+
+.check-result-icon {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 0.75rem;
+  animation: check-result-pop 400ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes check-result-pop {
+  from { opacity: 0; transform: scale(0.5); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.check-result-bubble.is-success .check-result-icon {
+  filter: drop-shadow(0 0 16px rgba(246, 207, 125, 0.8));
+}
+
+.check-result-label {
+  @apply mb-2 text-xs text-foam/60;
+}
+
+/* ── Stat Delta fly ── */
+.game-stat-pill {
+  position: relative;
+}
+
+.stat-delta {
+  position: absolute;
+  top: -0.75rem;
+  right: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  pointer-events: none;
+  animation: stat-delta-fly 1.6s ease-out forwards;
+}
+
+.stat-delta.is-positive { color: #6ddc9a; }
+.stat-delta.is-negative { color: #e07474; }
+
+@keyframes stat-delta-fly {
+  0%   { opacity: 1; transform: translateY(0); }
+  60%  { opacity: 1; transform: translateY(-1.2rem); }
+  100% { opacity: 0; transform: translateY(-1.8rem); }
+}
+
+/* ── Time Gate hint ── */
+.time-gate-next {
+  @apply text-gold/90;
+}
